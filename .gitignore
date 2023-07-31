@@ -1,5 +1,2 @@
-migrations/
-migrations/__init__.py
-
-# Ignore __pycache__ folders and their contents
-__pycache__/
+*/migrations/
+**/__pycache__/
