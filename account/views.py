@@ -1,15 +1,18 @@
-from django.shortcuts import render
+from django.shortcuts import render,redirect
 from .models import UserAccount,Hirer,Freelancer,Owner
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.response import responses,Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import LoginSerializer,HirerRegistrationSerializer,FreelancerRegistrationSerializer,HirerSelfProfileSerializer,FreelancerSelfProfileSerializer,HirerProfileUpdateSerializer,FreelancerProfileUpdateSerializer,ViewAllHirerSerializer,ViewAllFreelancerSerializer,UserChangePasswordSerializer
+from.serializers import LoginSerializer,HirerRegistrationSerializer,FreelancerRegistrationSerializer,HirerSelfProfileSerializer,FreelancerSelfProfileSerializer,HirerProfileUpdateSerializer,FreelancerProfileUpdateSerializer,ViewAllHirerSerializer,ViewAllFreelancerSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from rest_framework.parsers import MultiPartParser,FormParser
 from smtputils import Util
+from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.contrib.auth.tokens import default_token_generator
 
 # Create your views here.
 
@@ -39,14 +42,17 @@ class LoginView(GenericAPIView):
                 return Response({'status':status.HTTP_401_UNAUTHORIZED,'message':'Your user Id is Block','data':{}},status=status.HTTP_401_UNAUTHORIZED)
             user=authenticate(email=email,password=password)
             if user is not None:
-                token=get_tokens_for_user(user)
-                if user.type=="HIRER":
-                     login_data={"Company_Name":user.Company_Name,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"about":user.about,"DOB":user.DOB,"Company_Establish":user.Company_Establish,"gender":user.gender,"map":user.map}
-                elif user.type=="FREELANCER":
-                    login_data={"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"skills":user.skills,"about":user.about,"DOB":user.DOB,"gender":user.gender,"map":user.map,"experience":user.experience,"qualification":user.qualification,"category":user.category}
+                if user.is_verified==True:
+                    token=get_tokens_for_user(user)
+                    if user.type=='OWNER':
+                        login_data={"Company_Name":user.Company_Name,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"gender":user.gender}
+                    elif user.type=="HIRER":
+                        login_data={"Company_Name":user.Company_Name,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"about":user.about,"DOB":user.DOB,"Company_Establish":user.Company_Establish,"gender":user.gender,"map":user.map}
+                    else:
+                        login_data={"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"skills":user.skills,"about":user.about,"DOB":user.DOB,"gender":user.gender,"map":user.map,"experience":user.experience,"qualification":user.qualification,"category":user.category}  
+                    return Response({'status':status.HTTP_200_OK,'message':'Login Success','data':{'type':user.type,'token':token,'login_data':login_data}},status=status.HTTP_200_OK)
                 else:
-                     return Response({'status':status.HTTP_404_NOT_FOUND,'message':'You are Not a Hirer Or Freelancer Profile','data':{}},status=status.HTTP_404_NOT_FOUND) 
-                return Response({'status':status.HTTP_200_OK,'message':'Login Success','data':{'type':user.type,'token':token,'login_data':login_data}},status=status.HTTP_200_OK)
+                    return Response({'status':status.HTTP_400_BAD_REQUEST,'message':"Your Account is not verified, Please Verify your Account",'data':{}},status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({'status':status.HTTP_404_NOT_FOUND,'message':'Email or password is not valid','data':{}},status=status.HTTP_404_NOT_FOUND)
 
@@ -61,13 +67,16 @@ class HirerRegistrationView(generics.CreateAPIView):
         serializer=HirerRegistrationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             user=serializer.save()
-            # token =get_tokens_for_user(user)
+            email=serializer.data.get('email')
+            usr = Hirer.objects.get(email = email)
+            uid = urlsafe_base64_encode(force_bytes(usr.id))
+            token =default_token_generator.make_token(usr)
             data={
                  'email_subject':"Account Verification",
                  'body': '''
-        <h1>Welcome to Freelancer </h1>
+        <h1>Welcome to Alanced</h1>
         <p>Click the button below to verify your account:</p>
-        <a href="http://localhost:8000" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
+        <a href="http://localhost:8000/account/verify/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
     ''',
                  'to_email': request.data['email']
             }
@@ -75,6 +84,7 @@ class HirerRegistrationView(generics.CreateAPIView):
             return Response({'status':status.HTTP_200_OK,'message':'Registration Sucessful, Verification link sent on your email'},status=status.HTTP_200_OK)
         return Response({'status':status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}},status=status.HTTP_400_BAD_REQUEST)
     
+
 
 class FreelancerRegistrationView(generics.CreateAPIView):
     parser_classes=[MultiPartParser,FormParser]
@@ -85,20 +95,25 @@ class FreelancerRegistrationView(generics.CreateAPIView):
         serializer=FreelancerRegistrationSerializer(data=request.data,context={'user':request.user})
         if serializer.is_valid(raise_exception=True):
             user=serializer.save()
+            email=serializer.data.get('email')
+            usr = Freelancer.objects.get(email = email)
+            uid = urlsafe_base64_encode(force_bytes(usr.id))
+            token =default_token_generator.make_token(usr)
             # token =get_tokens_for_user(user)
             data={
                  'email_subject':"Account Verification",
                  'body': '''
-        <h1>Welcome to Freelancer! Congratulation</h1>
+        <h1>Welcome to Alanced</h1>
         <p>Click the button below to verify your account:</p>
-        <a href="http://localhost:8000" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
+        <a href="http://localhost:8000/account/verify/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
     ''',
                  'to_email': request.data['email']
             }
             Util.send_email(data)
             return Response({'status':status.HTTP_200_OK,'message':'Registration Sucessful, Verification link sent on your email'},status=status.HTTP_200_OK)
         return Response({'status':status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}},status=status.HTTP_400_BAD_REQUEST)
-    
+
+
 class HirerSelfProfileView(GenericAPIView,mixins.RetrieveModelMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = HirerSelfProfileSerializer
@@ -222,4 +237,29 @@ class UserChangePasswordView(generics.CreateAPIView):
       serializer=UserChangePasswordSerializer(data=request.data,context={'user':request.user})
       if serializer.is_valid(raise_exception=True):
           return Response({'status':status.HTTP_200_OK,'message':"Your Password Changed Successfully"},status=status.HTTP_200_OK)
-      return Response({'status':status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}},status=status.HTTP_400_BAD_REQUEST) 
+      return Response({'status':status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}},status=status.HTTP_400_BAD_REQUEST)
+
+
+def AccountVerification(request,uid,token):
+    uid = urlsafe_base64_decode(uid).decode()
+    user=UserAccount.objects.get(id=uid)
+    if default_token_generator.check_token(user, token):
+        user.is_verified = True
+        user.save()
+        return redirect('http://127.0.0.1:8000/') 
+    
+
+class SendPasswordResetEmailView(generics.CreateAPIView):
+  serializer_class=SendPasswordResetEmailSerializer
+  def post(self, request, format=None):
+    serializer = SendPasswordResetEmailSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    return Response({'msg':'Password Reset link send. Please check your Email'}, status=status.HTTP_200_OK)
+  
+
+class UserPasswordResetView(generics.CreateAPIView):
+  serializer_class=UserPasswordResetSerializer
+  def post(self, request, uid, token, format=None):
+    serializer = UserPasswordResetSerializer(data=request.data, context={'uid':uid, 'token':token})
+    serializer.is_valid(raise_exception=True)
+    return Response({'msg':'Password Reset Successfully'}, status=status.HTTP_200_OK)      
