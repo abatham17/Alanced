@@ -1,11 +1,11 @@
 from django.shortcuts import render
-from . models import Project
+from . models import Project,Bid
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer
+from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from account.models import Hirer
@@ -54,6 +54,7 @@ class ViewProjectById(GenericAPIView,mixins.RetrieveModelMixin):
 
 class ViewHirerSelfProject(generics.ListAPIView):
     permission_classes =[IsAuthenticated]
+    serializer_class = ViewAllProjectSerializer
     
     def get(Self,request,*args,**kwargs):
         if request.user.type !="HIRER" or request.user.Block == True:
@@ -68,6 +69,7 @@ class ViewHirerSelfProject(generics.ListAPIView):
 class ProjectUpdateView(GenericAPIView,mixins.UpdateModelMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = ProjectUpdateSeralizer
+    queryset = Project.objects.all()
 
     def put(self,request,*args,**kwargs):
         if request.user.type != 'HIRER' or request.user.Block==True:
@@ -102,3 +104,27 @@ class DeleteProjectView(GenericAPIView,mixins.DestroyModelMixin):
         del_project=self.destroy(self,request,*args,**kwargs)
         return Response({'status': status.HTTP_200_OK, 'message': 'Project Deleted Sucessfully', 'data':{str(del_project)}}, status=status.HTTP_200_OK)
         
+class AddBidView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddBidAmountSerializer
+    queryset = Bid.objects.all()
+
+    def post(self, request, *args, **kwargs):
+        if request.user.type != 'FREELANCER' or request.user.Block:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Your ID is Blocked or You are not a freelancer', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+
+        proj_id = kwargs['pk']
+        try:
+            pro_bid = Project.objects.get(id=proj_id)
+        except Project.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Project Not Found', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+
+        existing_bid = Bid.objects.filter(project=pro_bid, freelancer=request.user)
+        if existing_bid.exists():
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'You Have Already Placed a Bid On this project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=request.data, context={'proj_id': proj_id, 'user': request.user})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({'status': status.HTTP_200_OK, 'message': 'Add Bid Amount Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Project
+from . models import Project,Bid
 
 
 class AddProjectSerializer(serializers.ModelSerializer):
@@ -34,4 +34,15 @@ class ProjectUpdateSeralizer(serializers.ModelSerializer):
         model = Project
         fields = ['title','description','budget','deadline','skills_required','category']
 
-  
+class AddBidAmountSerializer(serializers.ModelSerializer):
+    bid_amount = serializers.DecimalField(max_digits=10,decimal_places=2)
+    
+    class Meta:
+        model = Bid
+        fields = ['bid_amount','description']
+    
+    def create(self, validated_data):
+        user=self.context.get('user')
+        proj_id=self.context.get('proj_id')
+        proj=Project.objects.get(id=proj_id)
+        return Bid.objects.create(bid_amount=self.validated_data['bid_amount'],description=self.validated_data['description'],freelancer=user,project=proj)

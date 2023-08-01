@@ -9,5 +9,6 @@ urlpatterns =[
     path('view/hirer-self/Project',views.ViewHirerSelfProject.as_view()),
     path('update/project/<str:pk>',views.ProjectUpdateView.as_view()),
     path('delete/project/<str:pk>',views.DeleteProjectView.as_view()),
+    path('Add/bid/<str:pk>',views.AddBidView.as_view()),
 ]
    

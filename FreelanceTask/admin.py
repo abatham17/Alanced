@@ -27,3 +27,26 @@ class ProjectsAdmin(UserAdmin):
         return False
 
 admin.site.register(Project,ProjectsAdmin)
+
+
+class BidAdmin(UserAdmin):
+    list_display = ('id','bid_amount','description','freelancer','project')
+    list_filter = ('id',)
+
+    fieldsets = (
+        (None, {'fields': ('freelancer','project')}),
+        ('Personal info', {'fields': ('bid_amount','description')}),
+    )
+    add_fieldsets = (
+        (None, {'fields': ('freelancer','project')}),
+        ('Personal info', {'fields': ('bid_amount','description')}),
+    )
+    # readonly_fields=('last_login',)
+    search_fields = ('bid_amount',)
+    ordering = ('id',)
+    filter_horizontal = ()
+
+    def has_add_permission(self, request):
+        return False
+
+admin.site.register(Bid,BidAdmin)
