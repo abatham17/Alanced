@@ -37,3 +37,30 @@ class Bid(models.Model):
 
     class Meta:
         db_table="Bid"
+
+
+class Membership(models.Model):
+    class membership_type(models.TextChoices):
+        Freelancer = "Freelancer", "freelancer"
+        Hirer = "Hirer", "hirer"
+    name = models.CharField(max_length=255)
+    features = models.CharField(default="")
+    price = models.DecimalField(max_digits=6, decimal_places=2,default="")
+    duration = models.PositiveIntegerField(help_text='Duration in days',default="")
+    membership_type = models.CharField(choices=membership_type.choices, default="")     
+
+    class Meta:
+        db_table="Membership"   
+
+
+class Review(models.Model):
+    RATING_CHOICES = [(i, i) for i in range(1, 6)]  
+
+    review = models.TextField(default="")
+    rating = models.IntegerField(choices=RATING_CHOICES,default="")
+    created_by = models.ForeignKey(Hirer,on_delete=models.DO_NOTHING,related_name='reviews_created')
+    created_for = models.ForeignKey(Freelancer,on_delete=models.DO_NOTHING,related_name='reviews_received')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table="Review" 

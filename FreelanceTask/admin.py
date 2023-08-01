@@ -27,3 +27,23 @@ class ProjectsAdmin(UserAdmin):
         return False
 
 admin.site.register(Project,ProjectsAdmin)
+
+
+class MembershipsAdmin(admin.ModelAdmin):
+    list_display = ('id','name','features','price','duration','membership_type')
+    list_filter = ('name',)
+
+    fieldsets = (
+        (None, {'fields': ('name','duration')}),
+        ('Personal info', {'fields': ('features','price','membership_type')}),
+    )
+    add_fieldsets = (
+        (None, {'fields': ('name','duration')}),
+        ('Personal info', {'fields': ('features','price','membership_type')}),
+    )
+    # readonly_fields=('last_login',)
+    search_fields = ('name',)
+    ordering = ('id',)
+    filter_horizontal = ()
+
+admin.site.register(Membership,MembershipsAdmin)

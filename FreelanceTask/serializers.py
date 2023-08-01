@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from . models import Project
+from . models import Project,Membership,Review
+from account.models import Freelancer
 
 
 class AddProjectSerializer(serializers.ModelSerializer):
@@ -33,5 +34,25 @@ class ProjectUpdateSeralizer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['title','description','budget','deadline','skills_required','category']
+
+
+class ViewAllMembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Membership
+        fields = ['name','features','price','duration','membership_type']
+
+
+class AddReviewSeralizer(serializers.ModelSerializer):
+    # rating = serializers.IntegerField(choices=RATING_CHOICES,default="")
+    class Meta:
+        model = Review
+        fields = ['rating','review']    
+
+
+    def create(self, validated_data):
+        user=self.context.get('user')
+        free_id=self.context.get('free_id')
+        freelancer_id=Freelancer.objects.get(id=free_id)
+        return Review.objects.create(rating=self.validated_data['rating'],review=self.validated_data['review'],created_by=user,created_for=freelancer_id)         
 
   

@@ -1,14 +1,14 @@
 from django.shortcuts import render
-from . models import Project
+from . models import Project,Review,Membership
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer
+from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddReviewSeralizer,ViewAllMembershipSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
-from account.models import Hirer
+from account.models import Hirer,Freelancer
 
 # Create your views here.
 
@@ -102,3 +102,32 @@ class DeleteProjectView(GenericAPIView,mixins.DestroyModelMixin):
         del_project=self.destroy(self,request,*args,**kwargs)
         return Response({'status': status.HTTP_200_OK, 'message': 'Project Deleted Sucessfully', 'data':{str(del_project)}}, status=status.HTTP_200_OK)
         
+
+class ViewAllMembership(generics.ListAPIView):
+    serializer_class = ViewAllMembershipSerializer
+
+    def get(self,request,format=None):
+        membership_data=Membership.objects.all().values()
+        membershiplist=[]
+        for i in membership_data:
+            membershiplist.append({'name':i['name'],'features':i['features'],'price':'₹' + str(i['price']),'duration':str(i['duration']) + ' days','membership_type':i['membership_type']})
+        return Response({'status':status.HTTP_200_OK,'message':"Ok",'data':membershiplist},status=status.HTTP_200_OK)        
+
+
+class AddReviewsView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddReviewSeralizer
+
+    def post(self,request,*args,**kwargs):
+        if request.user.type != 'HIRER' or request.user.Block==True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Hirer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        free_id=kwargs['pk']
+        try:
+            freelancerObj = Freelancer.objects.get(id=free_id)
+        except Freelancer.DoesNotExist:
+             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
+        serializer = AddReviewSeralizer(data=request.data, context={'free_id': free_id, "user": request.user})
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'status': status.HTTP_200_OK, 'message': 'Review Added Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
