@@ -15,4 +15,7 @@ urlpatterns =[
     path('hirer/profile/Delete/<str:pk>',views.DeleteHirerView.as_view()),
     path('freelancer/profile/Delete/<str:pk>',views.DeleteFreelancerView.as_view()),
     path('change-password',views.UserChangePasswordView.as_view()),
+    path('verify/<str:uid>/<str:token>/',views.AccountVerification),
+    path('forgot-password', views.SendPasswordResetEmailView.as_view()),
+    path('password/reset/<uid>/<token>',views.UserPasswordResetView.as_view()),
 ]
