@@ -1,2 +1,5 @@
-*/migrations/
-**/__pycache__/
+*.pyc
+__pycache__/
+/static/
+/media/
+/migrations/
