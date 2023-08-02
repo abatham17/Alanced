@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer
+from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from account.models import Hirer
@@ -128,3 +128,46 @@ class AddBidView(generics.CreateAPIView):
         serializer.save()
 
         return Response({'status': status.HTTP_200_OK, 'message': 'Add Bid Amount Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+    
+
+class ViewBidById(GenericAPIView,mixins.RetrieveModelMixin):
+    serializer_class = [IsAuthenticated]
+    serializer_class = ViewBidSerializer
+    queryset = Bid.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        project_id = kwargs['pk']
+        chk_bid = Bid.objects.filter(project_id=project_id)
+        
+        if request.user.Block == True:
+            return Response({'status':status.HTTP_403_FORBIDDEN,'message':'your profile is Block','data':{}},status=status.HTTP_403_FORBIDDEN)
+        
+        if chk_bid.exists():
+            bids = Bid.objects.filter(project_id=project_id).values('id')
+            my_bids=[]
+            for i in bids:
+                obj_call=Bid.objects.select_related().get(id=i['id'])
+                # bid_time_str = obj_call.bid_time.strftime('%Y-%m-%d %H:%M:%S')
+                # print(obj_call.bid_time)
+                my_bids.append({'id': obj_call.id,'bid_amount': obj_call.bid_amount,'description': obj_call.description,'bid_time':obj_call.bid_time,'freelancer_first_Name':obj_call.freelancer.first_Name,'project':obj_call.project.id})
+            return Response({'status': status.HTTP_200_OK, 'message': 'OK', 'data': my_bids}, status=status.HTTP_200_OK)
+        else:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'No bids found for this project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+
+
+class DeleteBidView(GenericAPIView,mixins.DestroyModelMixin):
+    permission_classes = [IsAuthenticated]
+    queryset = Bid.objects.all()
+
+
+    def delete(self,request,*args,**kwargs):
+        if request.user.type !='FREELANCER' or request.user.Block == True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Freelancer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            bid_det = Bid.objects.select_related().get(id=kwargs['pk'])
+        except Bid.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Bid Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
+        if bid_det.freelancer.id != request.user.id:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your Bid', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        del_bid=self.destroy(self,request,*args,**kwargs)
+        return Response({'status': status.HTTP_200_OK, 'message': 'Bid Deleted Sucessfully', 'data':{str(del_bid)}}, status=status.HTTP_200_OK)

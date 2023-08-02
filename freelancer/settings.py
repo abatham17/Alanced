@@ -93,14 +93,18 @@ DATABASES = {
     }
 }
 
+DATE_INPUT_FORMATS=['%d-%m-%Y']
+TIME_INPUT_FORMATS = ('%I:%M %p',)
+
 REST_FRAMEWORK = {
     'DATE_INPUT_FORMATS':[("%d-%m-%Y"),],
+    'TIME_INPUT_FORMATS' : [ ("%I:%M %p"),],
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
 
-DATE_INPUT_FORMATS=['%d-%m-%Y']
+
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -125,11 +129,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
-USE_I18N = True
+# TIME_ZONE = 'UTC'
 
-USE_TZ = True
+# USE_I18N = True
+
+# USE_TZ = True
 
 AUTH_USER_MODEL='account.UserAccount'
 

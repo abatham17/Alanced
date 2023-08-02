@@ -46,3 +46,9 @@ class AddBidAmountSerializer(serializers.ModelSerializer):
         proj_id=self.context.get('proj_id')
         proj=Project.objects.get(id=proj_id)
         return Bid.objects.create(bid_amount=self.validated_data['bid_amount'],description=self.validated_data['description'],freelancer=user,project=proj)
+    
+
+class ViewBidSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bid
+        fields = ['id','bid_amount','description','bid_time','freelancer_id','project_id']
