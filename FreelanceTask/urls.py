@@ -10,7 +10,8 @@ urlpatterns =[
     path('update/project/<str:pk>',views.ProjectUpdateView.as_view()),
     path('delete/project/<str:pk>',views.DeleteProjectView.as_view()),
     path('Add/bid/<str:pk>',views.AddBidView.as_view()),
-    path('View/bid/<str:pk>',views.ViewBidById.as_view()),
+    path('View/bids/<str:pk>',views.ViewBidById.as_view()),
+    path('edit/bid/<str:pk>',views.BidUpdateView.as_view()),
     path('delete/bid/<str:pk>',views.DeleteBidView.as_view()),
 ]
    

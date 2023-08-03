@@ -52,3 +52,8 @@ class ViewBidSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bid
         fields = ['id','bid_amount','description','bid_time','freelancer_id','project_id']
+
+class EditBidSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bid
+        fields = ['bid_amount','description']
