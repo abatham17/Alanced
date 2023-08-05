@@ -1,14 +1,15 @@
 from django.shortcuts import render
-from . models import Project,Bid
+from . models import Project,Bid,Membership,Review,FreelancerProject
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer
+from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer,ViewAllMembershipSerializer,AddReviewSeralizer,EditReviewSeralizer,FreelancerAddProjectSerializer,FreelancerProjectUpdateSeralizer,ViewAllReviewSerializer,ViewAllFreelancerProjectSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
-from account.models import Hirer
+from account.models import Hirer,Freelancer
+from datetime import datetime
 
 # Create your views here.
 
@@ -103,7 +104,8 @@ class DeleteProjectView(GenericAPIView,mixins.DestroyModelMixin):
             return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
         del_project=self.destroy(self,request,*args,**kwargs)
         return Response({'status': status.HTTP_200_OK, 'message': 'Project Deleted Sucessfully', 'data':{str(del_project)}}, status=status.HTTP_200_OK)
-        
+
+
 class AddBidView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AddBidAmountSerializer
@@ -139,8 +141,6 @@ class ViewBidById(GenericAPIView,mixins.RetrieveModelMixin):
         project_id = kwargs['pk']
         chk_bid = Bid.objects.filter(project_id=project_id)
         
-        # if request.user.Block == True:
-        #     return Response({'status':status.HTTP_403_FORBIDDEN,'message':'your profile is Block','data':{}},status=status.HTTP_403_FORBIDDEN)
         
         if chk_bid.exists():
             bids = Bid.objects.filter(project_id=project_id).values('id')
@@ -148,8 +148,7 @@ class ViewBidById(GenericAPIView,mixins.RetrieveModelMixin):
             for i in bids:
                 obj_call=Bid.objects.select_related().get(id=i['id'])
                 formatted_date = obj_call.bid_time.strftime("%Y-%m-%d %I:%M %p")
-                # bid_time_str = obj_call.bid_time.strftime('%Y-%m-%d %H:%M:%S')
-                # print(obj_call.bid_time)
+                print(formatted_date)
                 my_bids.append({'id': obj_call.id,'bid_amount': obj_call.bid_amount,'description': obj_call.description,'bid_time':formatted_date,'freelancer_first_Name':obj_call.freelancer.first_Name,'project':obj_call.project.id})
             return Response({'status': status.HTTP_200_OK, 'message': 'OK', 'data': my_bids}, status=status.HTTP_200_OK)
         else:
@@ -193,3 +192,200 @@ class BidUpdateView(GenericAPIView,mixins.UpdateModelMixin):
             serializer.save()
             return Response({'status': status.HTTP_200_OK, 'message': 'Bid Edit Sucessfully', 'data': serializer.data}, status=status.HTTP_200_OK)
         return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class ViewAllHirerMembership(generics.ListAPIView):
+    serializer_class = ViewAllMembershipSerializer
+
+    def get(self, request, format=None):
+        membership_data = Membership.objects.all().values()
+        hirer_list = []
+
+        for i in membership_data:
+            membership_item = {
+                'name': i['name'],
+                'features': i['features'],
+                'price': '₹' + str(i['price']),
+                'duration': str(i['duration']) + ' days',
+                'membership_type': i['membership_type']
+            }
+
+            if i['membership_type'].lower() == 'hirer':
+                hirer_list.append(membership_item)
+
+        return Response({'status': status.HTTP_200_OK,'message': "Ok",'data': hirer_list }, status=status.HTTP_200_OK)
+    
+
+class ViewAllFreelancerMembership(generics.ListAPIView):
+    serializer_class = ViewAllMembershipSerializer
+
+    def get(self, request, format=None):
+        membership_data = Membership.objects.all().values()
+        freelancer_list = []
+
+        for i in membership_data:
+            membership_item = {
+                'name': i['name'],
+                'features': i['features'],
+                'price': '₹' + str(i['price']),
+                'duration': str(i['duration']) + ' days',
+                'membership_type': i['membership_type']
+            }
+
+            if i['membership_type'].lower() == 'freelancer':
+                freelancer_list.append(membership_item)
+         
+        return Response({'status': status.HTTP_200_OK,'message': "Ok",'data':freelancer_list}, status=status.HTTP_200_OK)         
+
+
+class AddReviewsView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddReviewSeralizer
+    queryset = Review.objects.all()
+
+    def post(self,request,*args,**kwargs):
+        if request.user.type != 'HIRER' or request.user.Block==True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Hirer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        free_id=kwargs['pk']
+        try:
+            freelancerObj = Freelancer.objects.get(id=free_id)
+        except Freelancer.DoesNotExist:
+             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
+        serializer = AddReviewSeralizer(data=request.data, context={'free_id': free_id, "user": request.user})
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'status': status.HTTP_200_OK, 'message': 'Review Added Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class ViewAllReviews(generics.ListAPIView):
+    serializer_class = ViewAllReviewSerializer
+    queryset = Review.objects.all()
+
+    def get(self,request,*args,**kwargs):
+        free_id = self.kwargs['pk']
+        print(free_id)
+        revdata = Review.objects.filter(created_for_id=free_id)
+        if not revdata:
+            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
+        rev = []
+        for rev_list in revdata:
+            rev.append({
+                'Reviewee': rev_list.created_for.first_Name, 
+                'Reviewer': rev_list.created_by.first_Name,
+                'rating': rev_list.rating,
+                'review': rev_list.review
+            })
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': rev}, status=status.HTTP_200_OK)
+
+class EditReviews(GenericAPIView,mixins.UpdateModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EditReviewSeralizer
+    queryset = Review.objects.all()
+
+    def put(self,request,*args,**kwargs):
+        if request.user.type != 'HIRER' or request.user.Block==True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Hirer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            revObj = Review.objects.select_related().get(id=kwargs['pk'])
+        except Review.DoesNotExist:
+             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Review Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
+        if revObj.created_by.id != request.user.id:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your Review', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(instance=revObj, data=request.data, context={'revObj': revObj, "user": request.user})
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'status': status.HTTP_200_OK, 'message': 'Your Review is updated Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST) 
+
+
+class DeleteReviews(GenericAPIView,mixins.DestroyModelMixin):
+    permission_classes = [IsAuthenticated]
+    queryset = Review.objects.all()
+
+    def delete(self,request,*args,**kwargs):
+        if request.user.type != 'HIRER' or request.user.Block==True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Hirer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            revObj = Review.objects.select_related().get(id=kwargs['pk'])
+        except Review.DoesNotExist:
+             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Review Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
+        if revObj.created_by.id != request.user.id:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your Review', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        del_project=self.destroy(self,request,*args,**kwargs)
+        return Response({'status': status.HTTP_200_OK, 'message': 'Your Review Deleted Sucessfully', 'data':{str(del_project)}}, status=status.HTTP_200_OK)       
+    
+
+class FreelancerAddProjectView(generics.CreateAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class=FreelancerAddProjectSerializer
+    def post(self, request,format=None):
+        serializer = FreelancerAddProjectSerializer(data=request.data,context={'user':request.user})
+        if serializer.is_valid(raise_exception=True):
+            user = serializer.save()
+            return Response({'status': status.HTTP_200_OK,'message':'Project has been Added Successfully','data':serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ViewAllFreelancerProjects(generics.ListAPIView):
+    serializer_class = ViewAllFreelancerProjectSerializer
+    queryset = FreelancerProject.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        free_id = self.kwargs['pk']
+        proj_data = FreelancerProject.objects.filter(design_by_id=free_id)
+        if not proj_data:
+            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
+        project_data = []
+        for pro_list in proj_data:
+            project_data.append({
+                'project_title': pro_list.project_title, 
+                'project_description': pro_list.project_description,
+                'project_link': pro_list.project_link,
+                'images_logo': '/media/'+str(pro_list.images_logo),
+                'project_pdf': '/media/'+str(pro_list.project_pdf),
+                'skills_used':pro_list.skills_used,
+                'category':pro_list.category,
+                'design_by':pro_list.design_by.first_Name+" "+pro_list.design_by.last_Name,
+            })
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': project_data}, status=status.HTTP_200_OK)
+    
+
+class FreelancerProjectUpdateView(GenericAPIView,mixins.UpdateModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FreelancerProjectUpdateSeralizer
+    queryset = FreelancerProject.objects.all()
+
+    def put(self,request,*args,**kwargs):
+        if request.user.type != 'FREELANCER' or request.user.Block==True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Freelancer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            projectObj = FreelancerProject.objects.select_related().get(id=kwargs['pk'])
+        except FreelancerProject.DoesNotExist:
+             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Project Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
+        if projectObj.design_by.id != request.user.id:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(instance=projectObj, data=request.data, context={'projectObj': projectObj, "user": request.user})
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'status': status.HTTP_200_OK, 'message': 'Project updated', 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)    
+    
+
+class DeleteFreelancerProjectView(GenericAPIView,mixins.DestroyModelMixin):
+    permission_classes = [IsAuthenticated]
+    queryset = FreelancerProject.objects.all()
+
+    def delete(self,request,*args,**kwargs):
+        if request.user.type != 'FREELANCER' or request.user.Block==True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Freelancer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            projectObj = FreelancerProject.objects.select_related().get(id=kwargs['pk'])
+        except FreelancerProject.DoesNotExist:
+             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Project Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
+        if projectObj.design_by.id != request.user.id:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        del_project=self.destroy(self,request,*args,**kwargs)
+        return Response({'status': status.HTTP_200_OK, 'message': 'Project Deleted Sucessfully', 'data':{str(del_project)}}, status=status.HTTP_200_OK)    
+
+

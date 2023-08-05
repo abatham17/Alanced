@@ -76,7 +76,7 @@ class UserAccount(AbstractBaseUser):
     map=models.URLField(default="")
     Address=models.TextField(default="")
     DOB=models.DateField(blank=True,null=True)
-    category = models.CharField(choices=Category.choices,default="")
+    category = models.CharField(choices=Category.choices,default="",max_length=100)
     gender=models.CharField(max_length=8,choices=gender.choices,default=gender.Male)
     
     USERNAME_FIELD = "email"
