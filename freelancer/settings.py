@@ -165,6 +165,7 @@ SWAGGER_SETTINGS = {
 
 CORS_ORIGIN_ALLOW_ALL=True
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=365),
@@ -209,13 +210,13 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://6941-2405-201-300b-edf-6cc1-8bf4-8fca-88d1.ngrok-free.app"
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:8000",
+#     "http://127.0.0.1:8000",
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+#     "https://6941-2405-201-300b-edf-6cc1-8bf4-8fca-88d1.ngrok-free.app"
+# ]
 
 #Email Configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
