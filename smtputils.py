@@ -7,7 +7,7 @@ class Util:
         email=EmailMessage(
             subject=data['email_subject'],
             body=data['body'],
-            from_email=os.environ.get('EMAIL_FROM'),
+            from_email='aparnac.wiz91@gmail.com',
             to=[data['to_email']]
         )
         email.content_subtype = 'html'
