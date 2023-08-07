@@ -198,7 +198,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
         'body':'''
         <h1>Welcome to Alanced</h1>
         <p>Click the button below to Reset Your Password:</p>
-        <a href="http://localhost:8000/account/password/reset/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #0091F7;border-radius:5px;"><b>Reset Your Password</b></a>
+        <a href="https://aparnawiz91.pythonanywhere.com/account/password/reset/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #0091F7;border-radius:5px;"><b>Reset Your Password</b></a>
     ''',
         'to_email':user.email
       }
