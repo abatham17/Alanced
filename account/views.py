@@ -116,6 +116,7 @@ class FreelancerRegistrationView(generics.CreateAPIView):
 
 class HirerSelfProfileView(GenericAPIView,mixins.RetrieveModelMixin):
     permission_classes = [IsAuthenticated]
+    
     serializer_class = HirerSelfProfileSerializer
 
 
