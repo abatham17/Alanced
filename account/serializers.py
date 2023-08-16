@@ -46,7 +46,7 @@ class HirerRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         Dob=self.validated_data['DOB']
         Ced=self.validated_data['Company_Establish']
-        if Dob == '' and Ced == '':
+        if Dob == '' or Ced == '':
              return Hirer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'],contact=self.validated_data['contact'],about=self.validated_data['about'],social_media=self.validated_data['social_media'],map=self.validated_data['map'],Address=self.validated_data['Address'],gender=self.validated_data['gender'],Company_Name=self.validated_data['Company_Name'],images_logo=validated_data.get('images_logo'))
         return Hirer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'],contact=self.validated_data['contact'],about=self.validated_data['about'],social_media=self.validated_data['social_media'],map=self.validated_data['map'],Address=self.validated_data['Address'],gender=self.validated_data['gender'],Company_Name=self.validated_data['Company_Name'],images_logo=validated_data.get('images_logo'),DOB=self.validated_data['DOB'],Company_Establish=self.validated_data['Company_Establish'])
     
