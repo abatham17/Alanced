@@ -5,7 +5,7 @@ from rest_framework.response import responses,Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import LoginSerializer,HirerRegistrationSerializer,FreelancerRegistrationSerializer,HirerSelfProfileSerializer,FreelancerSelfProfileSerializer,HirerProfileUpdateSerializer,FreelancerProfileUpdateSerializer,ViewAllHirerSerializer,ViewAllFreelancerSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer
+from.serializers import LoginSerializer,HirerRegistrationSerializer,FreelancerRegistrationSerializer,HirerSelfProfileSerializer,FreelancerSelfProfileSerializer,HirerProfileUpdateSerializer,FreelancerProfileUpdateSerializer,ViewAllHirerSerializer,ViewAllFreelancerSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,googleLoginSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from rest_framework.parsers import MultiPartParser,FormParser
@@ -247,7 +247,7 @@ def AccountVerification(request,uid,token):
     if default_token_generator.check_token(user, token):
         user.is_verified = True
         user.save()
-        return redirect('https://aparnawiz91.pythonanywhere.com/') 
+        return redirect('http://localhost:3000/login') 
     
 
 class SendPasswordResetEmailView(generics.CreateAPIView):
@@ -263,4 +263,35 @@ class UserPasswordResetView(generics.CreateAPIView):
   def post(self, request, uid, token, format=None):
     serializer = UserPasswordResetSerializer(data=request.data, context={'uid':uid, 'token':token})
     serializer.is_valid(raise_exception=True)
-    return Response({'status':status.HTTP_200_OK,'message':"Password Reset Successfully"},status=status.HTTP_200_OK)      
+    return Response({'status':status.HTTP_200_OK,'message':"Password Reset Successfully"},status=status.HTTP_200_OK)
+
+#googl login and registration
+class googleLoginView(GenericAPIView):
+    serializer_class = googleLoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if 'email' in request.data and 'type' in request.data:
+            email = request.data['email']
+            user_type = request.data['type']  
+            user, created = UserAccount.objects.get_or_create(email=email)
+
+         
+            if created:
+                user.type = user_type 
+                user.save()  
+                serializer = googleLoginSerializer(user)
+                return Response(serializer.data, status=201)
+            return Response({'status':status.HTTP_200_OK,'message':"Email already exists"},status=status.HTTP_200_OK)
+        return Response({'status':status.HTTP_400_BAD_REQUEST,'message':"Email or type not provided"},status=status.HTTP_400_BAD_REQUEST) 
+     
+
+class CheckEmailExistsView(GenericAPIView):
+    def post(self, request):
+        email = request.data.get('email', None)
+        if not email:
+            return Response({'status':status.HTTP_400_BAD_REQUEST,'message':"Email not provided"},status=status.HTTP_400_BAD_REQUEST)
+
+        exists = UserAccount.objects.filter(email=email).exists()
+        return Response({"exists": exists}, status=status.HTTP_200_OK)     

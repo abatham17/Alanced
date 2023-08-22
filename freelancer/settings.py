@@ -106,6 +106,7 @@ TIME_INPUT_FORMATS = ('%I:%M %p',)
 REST_FRAMEWORK = {
     'DATE_INPUT_FORMATS':[("%d-%m-%Y"),],
     'TIME_INPUT_FORMATS' : [ ("%I:%M %p"),],
+    'EXCEPTION_HANDLER':'utils.exceptionhandler.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )

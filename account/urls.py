@@ -18,4 +18,6 @@ urlpatterns =[
     path('verify/<str:uid>/<str:token>/',views.AccountVerification),
     path('forgot-password', views.SendPasswordResetEmailView.as_view()),
     path('password/reset/<uid>/<token>',views.UserPasswordResetView.as_view()),
+    path('google-login/', views.googleLoginView.as_view()),
+    path('check-email/', views.CheckEmailExistsView.as_view()),
 ]
