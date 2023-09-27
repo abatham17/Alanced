@@ -32,9 +32,9 @@ class ViewAllProject(generics.ListAPIView):
         project_list=[]
         for i in project_data:
             proObj=Project.objects.select_related().get(id=i['id'])
-            project_list.append({'id':proObj.id,'title':proObj.title,'description':proObj.description,'budget':proObj.budget,'deadline':proObj.deadline,'skills_required':proObj.skills_required,'category':proObj.category,'project_owner_name':proObj.project_owner.first_Name})
+            project_list.append({'id':proObj.id,'title':proObj.title,'description':proObj.description,'budget':proObj.budget,'deadline':proObj.deadline,'skills_required':proObj.skills_required,'category':proObj.category,'project_owner_name':proObj.project_owner.first_Name+ " "+ proObj.project_owner.last_Name,'project_creation_date':proObj.created_at,'project_owner_location':proObj.project_owner.Address,'project_owner_contact':proObj.project_owner.contact})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':project_list}, status=status.HTTP_200_OK)
-
+    
 
 class ViewProjectById(GenericAPIView,mixins.RetrieveModelMixin):
     queryset=Project.objects.all()
@@ -63,7 +63,7 @@ class ViewHirerSelfProject(generics.ListAPIView):
         hirerPro=[]
         hirerlist=Project.objects.filter(project_owner_id=request.user.id).values()
         for i in hirerlist:
-            hirerPro.append({'id':i['id'],'title':i['title'],'description':i['description'],'budget':i['budget'],'deadline':i['deadline'],'skills_required':i['skills_required'],'category':i['category']})
+            hirerPro.append({'id':i['id'],'title':i['title'],'description':i['description'],'budget':i['budget'],'deadline':i['deadline'],'skills_required':i['skills_required'],'category':i['category'],'Project_created_at':i['created_at']})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':hirerPro}, status=status.HTTP_200_OK)
 
 
@@ -149,7 +149,7 @@ class ViewBidById(GenericAPIView,mixins.RetrieveModelMixin):
                 obj_call=Bid.objects.select_related().get(id=i['id'])
                 formatted_date = obj_call.bid_time.strftime("%Y-%m-%d %I:%M %p")
                 print(formatted_date)
-                my_bids.append({'id': obj_call.id,'bid_amount': obj_call.bid_amount,'description': obj_call.description,'bid_time':formatted_date,'freelancer_first_Name':obj_call.freelancer.first_Name,'project':obj_call.project.id})
+                my_bids.append({'id': obj_call.id,'bid_amount': obj_call.bid_amount,'description': obj_call.description,'bid_time':formatted_date,'freelancer_Name':obj_call.freelancer.first_Name+" "+obj_call.freelancer.last_Name,'project_id':obj_call.project.id,'freelancer_category':obj_call.freelancer.category,'freelancer_address':obj_call.freelancer.Address,'Freelancer_skills':obj_call.freelancer.skills,'freelancer_profilepic':'/media/'+str(obj_call.freelancer.images_logo),'freelancer_about':obj_call.freelancer.about,"project":{'title':obj_call.project.title,'description':obj_call.project.description,'category':obj_call.project.category,'skills_required':obj_call.project.skills_required,'deadline':obj_call.project.deadline,'budget':obj_call.project.budget,'created_at':obj_call.project.created_at}})
             return Response({'status': status.HTTP_200_OK, 'message': 'OK', 'data': my_bids}, status=status.HTTP_200_OK)
         else:
             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'No bids found for this project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
@@ -386,6 +386,40 @@ class DeleteFreelancerProjectView(GenericAPIView,mixins.DestroyModelMixin):
         if projectObj.design_by.id != request.user.id:
             return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
         del_project=self.destroy(self,request,*args,**kwargs)
-        return Response({'status': status.HTTP_200_OK, 'message': 'Project Deleted Sucessfully', 'data':{str(del_project)}}, status=status.HTTP_200_OK)    
+        return Response({'status': status.HTTP_200_OK, 'message': 'Project Deleted Sucessfully', 'data':{str(del_project)}}, status=status.HTTP_200_OK)  
+
+
+
+class ViewFreelancerSelfBid(generics.ListAPIView):
+    permission_classes =[IsAuthenticated]
+    serializer_class = ViewBidSerializer
+    
+    def get(Self,request,*args,**kwargs):
+        if request.user.type !="FREELANCER" or request.user.Block == True:
+            return Response ({'status': status.HTTP_403_FORBIDDEN,'message':'Your Profile is Blocked or Not a Freelancer Profile','data':{}}, status=status.HTTP_403_FORBIDDEN)
+        freelanceBid=[]
+        freelancelist=Bid.objects.filter(freelancer_id=request.user.id).values("id")
+        for i in freelancelist:
+            bidobj=Bid.objects.select_related().get(id=i['id'])
+            print(bidobj,"bid")
+            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'budget':bidobj.project.budget,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at}})
+        return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceBid}, status=status.HTTP_200_OK)
+
+
+class ViewFreelancerSelfProjectBid(generics.ListAPIView):
+    permission_classes =[IsAuthenticated]
+    serializer_class = ViewBidSerializer
+    
+    def get(Self,request,*args,**kwargs):
+        project_id = kwargs['pk']
+        if request.user.type !="FREELANCER" or request.user.Block == True:
+            return Response ({'status': status.HTTP_403_FORBIDDEN,'message':'Your Profile is Blocked or Not a Freelancer Profile','data':{}}, status=status.HTTP_403_FORBIDDEN)
+        freelanceProjectBid=[]
+        freelanceProjectlist=Bid.objects.filter(freelancer_id=request.user.id,project_id=project_id).values("id")
+        for i in freelanceProjectlist:
+            probidobj=Bid.objects.select_related().get(id=i['id'])
+            print(probidobj,"bid")
+            freelanceProjectBid.append({'id':probidobj.id,'bid_amount':probidobj.bid_amount,'description':probidobj.description,'bid_time':probidobj.bid_time,'freelancer_id':probidobj.freelancer_id,'project_id':probidobj.project_id,"project":{'title':probidobj.project.title,'category':probidobj.project.category,'description':probidobj.project.description,'skills_required':probidobj.project.skills_required,'budget':probidobj.project.budget,'deadline':probidobj.project.deadline,'created_at':probidobj.project.created_at}})
+        return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceProjectBid}, status=status.HTTP_200_OK)  
 
 

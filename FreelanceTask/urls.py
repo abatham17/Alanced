@@ -23,5 +23,7 @@ urlpatterns =[
     path('View-all/Freelancer/Self-Project/<str:pk>',views.ViewAllFreelancerProjects.as_view()),
     path('update/Freelancer/Self-project/<str:pk>',views.FreelancerProjectUpdateView.as_view()),
     path('delete/freelancer/project/<str:pk>',views.DeleteFreelancerProjectView.as_view()),
+    path('view/freelancer-self/bid',views.ViewFreelancerSelfBid.as_view()),
+    path('view/freelancer-self/project-bid/<str:pk>',views.ViewFreelancerSelfProjectBid.as_view()),
 ]
    

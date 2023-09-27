@@ -111,7 +111,7 @@ class HirerSelfProfileSerializer(serializers.ModelSerializer):
 class FreelancerSelfProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Freelancer
-        fields =['id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category']
+        fields =['id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category','about']
 
     def validate(self, attrs):
         return attrs
