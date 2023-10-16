@@ -1,29 +1,30 @@
 from django.db import models
 from account.models import Hirer,Freelancer
 from django_fields import DefaultStaticImageField
+from decimal import Decimal
 
 # Create your models here.
 
 class Project(models.Model):
-    class Category(models.TextChoices):
-         Web_development = "Web_development", "web_development"
-         Mobile_development = "Mobile_development", "mobile_development"
-         Web_designing = "Web_designing" , "web_designing"
-         Software_development = "Software_development", "software_development"
-         Ui_Ux_designing = "Ui_Ux_designing", "ui_ux_designing"
-         Logo_Designing ="Logo_Designing", "logo_Designing"
-         Graphics_designing ="Graphics_designing", "graphics_designing"
-         Cloud_computing ="Cloud_computing", "cloud_computing"
-         AI_ML ="AI_ML", "AI_ML"
-         Data_Science ="Data_Science", "data_Science"
+    class Experience_level(models.TextChoices):
+        Entry_Level = "Entry_Level", "entry_Level"
+        Intermediate = "Intermediate", "intermediate"   
+        Experienced = "Expert" , "expert"
+    class Rate(models.TextChoices):
+        Hourly = "Hourly", "hourly"
+        Fixed = "Fixed", "fixed"
     title = models.CharField(max_length=200,default="")
     description = models.TextField(default="")
-    budget = models.DecimalField(max_digits=10, decimal_places=2,default="")
     deadline = models.DateField(blank=True,null=True)
     skills_required = models.CharField(max_length=200,default="")
     project_owner = models.ForeignKey(Hirer, on_delete=models.DO_NOTHING, related_name='projects')
     created_at = models.DateTimeField(auto_now_add=True)
-    category = models.CharField(choices=Category.choices,default="",max_length=100)
+    category = models.TextField(default='')
+    rate = models.CharField(max_length=15,choices=Rate.choices,default="")
+    min_hourly_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00,null=True)
+    max_hourly_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00,null=True)
+    fixed_budget = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,null=True)
+    experience_level = models.CharField(max_length=50,choices=Experience_level.choices,default="")
 
     class Meta:
         db_table="Project"
@@ -46,49 +47,66 @@ class Membership(models.Model):
         Hirer = "Hirer", "hirer"
     name = models.CharField(max_length=255)
     features = models.CharField(default="",max_length=10000)
-    price = models.DecimalField(max_digits=10, decimal_places=2,default="")
+    price = models.DecimalField(max_digits=6, decimal_places=2,default="")
     duration = models.PositiveIntegerField(help_text='Duration in days',default="")
-    membership_type = models.CharField(choices=membership_type.choices, default="",max_length=100)     
+    membership_type = models.CharField(max_length=50,choices=membership_type.choices, default="")     
 
     class Meta:
         db_table="Membership"   
 
 
 class Review(models.Model):
-    RATING_CHOICES = [(i, i) for i in range(1, 6)]  
+    RATING_CHOICES = [(Decimal(f"{i/2:.1f}"), Decimal(f"{i/2:.1f}")) for i in range(2, 11)]  
 
     review = models.TextField(default="")
-    rating = models.IntegerField(choices=RATING_CHOICES,default="")
-    created_by = models.ForeignKey(Hirer,on_delete=models.DO_NOTHING,related_name='reviews_created')
-    created_for = models.ForeignKey(Freelancer,on_delete=models.DO_NOTHING,related_name='reviews_received')
+    rating = models.DecimalField(max_digits=2, decimal_places=1, choices=RATING_CHOICES, default=Decimal("1.0"))
+    created_by = models.ForeignKey(Hirer, on_delete=models.DO_NOTHING, related_name='reviews_created')
+    created_for = models.ForeignKey(Freelancer, on_delete=models.DO_NOTHING, related_name='reviews_received')
     created_at = models.DateTimeField(auto_now_add=True)
+    projects = models.ForeignKey(Project, on_delete=models.DO_NOTHING, related_name='projects_completed')
 
     class Meta:
-        db_table="Review" 
+        db_table = "Review"
+
 
 
 
 class FreelancerProject(models.Model):
-    class Category(models.TextChoices):
-         Web_development = "Web_development", "web_development"
-         Mobile_development = "Mobile_development", "mobile_development"
-         Web_designing = "Web_designing" , "web_designing"
-         Software_development = "Software_development", "software_development"
-         Ui_Ux_designing = "Ui_Ux_designing", "ui_ux_designing"
-         Logo_Designing ="Logo_Designing", "logo_Designing"
-         Graphics_designing ="Graphics_designing", "graphics_designing"
-         Cloud_computing ="Cloud_computing", "cloud_computing"
-         AI_ML ="AI_ML", "AI_ML"
-         Data_Science ="Data_Science", "data_Science"
     project_title = models.CharField(max_length=200,default="")
     project_description = models.TextField(default="")
     project_link=models.URLField(default="")
-    images_logo=DefaultStaticImageField(upload_to="images_logo",default_image_path='images/blank.png',blank=True)
-    project_pdf=models.FileField(upload_to='documents',default='images/default.pdf')
+    images_logo=DefaultStaticImageField(upload_to="images_logo",default_image_path='images/blankpro.png',blank=True)
+    project_pdf=models.FileField(upload_to='documents',default='doc/default.pdf',blank=True)
     skills_used = models.CharField(max_length=200,default="")
     design_by = models.ForeignKey(Freelancer, on_delete=models.DO_NOTHING, related_name='selfprojects')
     created_at = models.DateTimeField(auto_now_add=True)
-    category = models.CharField(choices=Category.choices,default="",max_length=100)
+    category = models.TextField(default='')
 
     class Meta:
         db_table="FreelancerProject"
+
+
+class SavedProject(models.Model):
+    freelancer = models.ForeignKey(Freelancer, on_delete=models.DO_NOTHING, related_name='saved_jobs')
+    project = models.ForeignKey(Project, on_delete=models.DO_NOTHING, related_name='saved_projects')
+    date_saved = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table="SavedProject"
+
+
+class FreelancerEmployment(models.Model):
+    
+    Freelancer_Company_Name=models.CharField(max_length=50,default="")
+    Company_Designation=models.CharField(max_length=100,default="")
+    Company_Joining_date=models.DateField(blank=True,null=True)
+    Company_Leaving_date=models.DateField(blank=True,null=True)
+    add_by = models.ForeignKey(Freelancer, on_delete=models.DO_NOTHING, related_name='employment')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+
+    class Meta:
+        db_table="FreelancerEmployment"
+
+
+

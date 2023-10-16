@@ -39,17 +39,10 @@ class UserAccount(AbstractBaseUser):
     class gender(models.TextChoices):
         Male = "Male", "male"
         Female = "Female", "female"
-    class Category(models.TextChoices):
-         Web_development = "Web_development", "web_development"
-         Mobile_development = "Mobile_development", "mobile_development"
-         Web_designing = "Web_designing" , "web_designing"
-         Software_development = "Software_development", "software_development"
-         Ui_Ux_designing = "Ui_Ux_designing", "ui_ux_designing"
-         Logo_Designing ="Logo_Designing", "logo_Designing"
-         Graphics_designing ="Graphics_designing", "graphics_designing"
-         Cloud_computing ="Cloud_computing", "cloud_computing"
-         AI_ML ="AI_ML", "AI_ML"
-         Data_Science ="Data_Science", "data_Science"
+    class Experience_level(models.TextChoices):
+        Entry_Level = "Entry_Level", "entry_Level"
+        Intermediate = "Intermediate", "intermediate"   
+        Experienced = "Expert" , "expert"  
     date_of_creation = models.DateField(auto_now_add=True)
     is_verified = models.BooleanField(default=False)
     images_logo=DefaultStaticImageField(upload_to="images_logo",default_image_path='images/blank.png',blank=True)
@@ -69,15 +62,18 @@ class UserAccount(AbstractBaseUser):
     qualification=models.TextField(default='')
     contact=models.CharField(max_length=10)
     about=models.TextField(default="")
-    Company_Establish=models.DateField(default=None, blank=True, null=True)
+    Company_Establish=models.DateField(blank=True,null=True)
     skills=models.TextField(default="")
     social_media=models.URLField(default="")
     Block=models.BooleanField(default=False)
     map=models.URLField(default="")
     Address=models.TextField(default="")
-    DOB=models.DateField(default=None, blank=True, null=True)
-    category = models.CharField(choices=Category.choices,default="",max_length=100)
-    gender=models.CharField(max_length=8,choices=gender.choices,default=gender.Male)
+    DOB=models.DateField(blank=True,null=True)
+    category = models.TextField(default='')
+    Language=models.TextField(default="")
+    hourly_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    experience_level = models.CharField(max_length=50,choices=Experience_level.choices,default="")
+    gender=models.CharField(max_length=8,choices=gender.choices,default="")
     
     USERNAME_FIELD = "email"
     

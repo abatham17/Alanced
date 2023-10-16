@@ -49,7 +49,7 @@ class LoginView(GenericAPIView):
                     elif user.type=="HIRER":
                         login_data={"id":user.id,"Company_Name":user.Company_Name,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"about":user.about,"DOB":user.DOB,"Company_Establish":user.Company_Establish,"gender":user.gender,"map":user.map}
                     else:
-                        login_data={"id":user.id,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"skills":user.skills,"about":user.about,"DOB":user.DOB,"gender":user.gender,"map":user.map,"experience":user.experience,"qualification":user.qualification,"category":user.category}  
+                        login_data={"id":user.id,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"skills":user.skills,"about":user.about,"DOB":user.DOB,"gender":user.gender,"map":user.map,"experience":user.experience,"qualification":user.qualification,"category":user.category,"Language":user.Language,"hourly_rate":user.hourly_rate,"experience_level":user.experience_level}  
                     return Response({'status':status.HTTP_200_OK,'message':'Login Success','data':{'type':user.type,'token':token,'login_data':login_data}},status=status.HTTP_200_OK)
                 else:
                     return Response({'status':status.HTTP_400_BAD_REQUEST,'message':"Your Account is not verified, Please Verify your Account",'data':{}},status=status.HTTP_400_BAD_REQUEST)
@@ -139,10 +139,10 @@ class FreelancerSelfProfileView(GenericAPIView,mixins.RetrieveModelMixin):
     def get(self,request,*args,**kwargs):
         if request.user.type!="FREELANCER" or request.user.Block==True:
             return Response({'status':status.HTTP_403_FORBIDDEN,'message':"You're not a Freelancer profile or your id is block",'data':{}},status=status.HTTP_403_FORBIDDEN)
-        user = Freelancer.objects.filter(id=self.request.user.id).values('id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category','about')
+        user = Freelancer.objects.filter(id=self.request.user.id).values('id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category','about','Language','hourly_rate','experience_level')
         userlist=[]
         for i in user:
-            userlist.append({'id':i['id'],'email':i['email'],'first_Name':i['first_Name'],'last_Name':i['last_Name'],'contact':i['contact'],'Address':i['Address'],'DOB':i['DOB'],'gender':i['gender'],'experience':i['experience'],'type':i['type'],'images_logo':'/media/'+i['images_logo'],'qualification':i['qualification'],'social_media':i['social_media'],'map':i['map'],'skills':i['skills'],'category':i['category'],'about':i['about']})
+            userlist.append({'id':i['id'],'email':i['email'],'first_Name':i['first_Name'],'last_Name':i['last_Name'],'contact':i['contact'],'Address':i['Address'],'DOB':i['DOB'],'gender':i['gender'],'experience':i['experience'],'type':i['type'],'images_logo':'/media/'+i['images_logo'],'qualification':i['qualification'],'social_media':i['social_media'],'map':i['map'],'skills':i['skills'],'category':i['category'],'about':i['about'],'Language':i['Language'],'hourly_rate':i['hourly_rate'],'experience_level':i['experience_level']})
         return Response({'status':status.HTTP_200_OK,'message':"Ok",'data':userlist},status=status.HTTP_200_OK)
 
 
@@ -193,8 +193,8 @@ class AllFreelancerView(generics.ListAPIView):
         Freelancer_data=Freelancer.objects.all().values()
         Freelancerlist=[]
         for i in Freelancer_data:
-            Freelancerlist.append({'id':i['id'],'email':i['email'],'first_Name':i['first_Name'],'last_Name':i['last_Name'],'contact':i['contact'],'Address':i['Address'],'DOB':i['DOB'],'gender':i['gender'],'experience':i['experience'],'type':i['type'],'images_logo':'/media/'+i['images_logo'],'qualification':i['qualification'],'social_media':i['social_media'],'map':i['map'],'skills':i['skills'],'category': i['category']})
-        return Response({'status':status.HTTP_200_OK,'message':"Ok",'data':Freelancerlist},status=status.HTTP_200_OK)         
+            Freelancerlist.append({'id':i['id'],'email':i['email'],'first_Name':i['first_Name'],'last_Name':i['last_Name'],'contact':i['contact'],'Address':i['Address'],'DOB':i['DOB'],'gender':i['gender'],'experience':i['experience'],'type':i['type'],'images_logo':'/media/'+i['images_logo'],'qualification':i['qualification'],'social_media':i['social_media'],'map':i['map'],'skills':i['skills'],'category': i['category'],'Language':i['Language'],'hourly_rate':i['hourly_rate'],'experience_level':i['experience_level'],'about':i['about']})
+        return Response({'status':status.HTTP_200_OK,'message':"Ok",'data':Freelancerlist},status=status.HTTP_200_OK)          
     
 
 class DeleteHirerView(GenericAPIView,mixins.DestroyModelMixin):

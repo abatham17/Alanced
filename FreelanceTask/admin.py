@@ -7,16 +7,16 @@ from .models import *
 
 
 class ProjectsAdmin(UserAdmin):
-    list_display = ('id','title','description','budget','deadline','skills_required','category','project_owner')
+    list_display = ('id','title','description','fixed_budget','deadline','skills_required','category','project_owner','rate','min_hourly_rate','max_hourly_rate','experience_level')
     list_filter = ('project_owner',)
 
     fieldsets = (
         (None, {'fields': ('title','category')}),
-        ('Personal info', {'fields': ('description','budget','deadline','skills_required')}),
+        ('Personal info', {'fields': ('description','fixed_budget','deadline','skills_required','rate','min_hourly_rate','max_hourly_rate','experience_level')}),
     )
     add_fieldsets = (
         (None, {'fields': ('title','category')}),
-        ('Personal info', {'fields': ('description','budget','deadline','skills_required')}),
+        ('Personal info', {'fields': ('description','fixed_budget','deadline','skills_required','rate','min_hourly_rate','max_hourly_rate','experience_level')}),
     )
     # readonly_fields=('last_login',)
     search_fields = ('category',)
@@ -27,29 +27,6 @@ class ProjectsAdmin(UserAdmin):
         return False
 
 admin.site.register(Project,ProjectsAdmin)
-
-
-class BidAdmin(UserAdmin):
-    list_display = ('id','bid_amount','description','bid_time','freelancer','project')
-    list_filter = ('id',)
-
-    fieldsets = (
-        (None, {'fields': ('freelancer','project')}),
-        ('Personal info', {'fields': ('bid_amount','description')}),
-    )
-    add_fieldsets = (
-        (None, {'fields': ('freelancer','project')}),
-        ('Personal info', {'fields': ('bid_amount','description')}),
-    )
-    # readonly_fields=('last_login',)
-    search_fields = ('bid_amount',)
-    ordering = ('id',)
-    filter_horizontal = ()
-
-    def has_add_permission(self, request):
-        return False
-
-admin.site.register(Bid,BidAdmin)
 
 
 class MembershipsAdmin(admin.ModelAdmin):

@@ -1,11 +1,11 @@
 from django.shortcuts import render
-from . models import Project,Bid,Membership,Review,FreelancerProject
+from . models import Project,Bid,Membership,Review,FreelancerProject,SavedProject,FreelancerEmployment
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer,ViewAllMembershipSerializer,AddReviewSeralizer,EditReviewSeralizer,FreelancerAddProjectSerializer,FreelancerProjectUpdateSeralizer,ViewAllReviewSerializer,ViewAllFreelancerProjectSerializer
+from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer,ViewAllMembershipSerializer,AddReviewSeralizer,EditReviewSeralizer,FreelancerAddProjectSerializer,FreelancerProjectUpdateSeralizer,ViewAllReviewSerializer,ViewAllFreelancerProjectSerializer,FreelancerEmploymentUpdateSeralizer,FreelancerAddEmploymentSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from account.models import Hirer,Freelancer
@@ -32,7 +32,7 @@ class ViewAllProject(generics.ListAPIView):
         project_list=[]
         for i in project_data:
             proObj=Project.objects.select_related().get(id=i['id'])
-            project_list.append({'id':proObj.id,'title':proObj.title,'description':proObj.description,'budget':proObj.budget,'deadline':proObj.deadline,'skills_required':proObj.skills_required,'category':proObj.category,'project_owner_name':proObj.project_owner.first_Name+ " "+ proObj.project_owner.last_Name,'project_creation_date':proObj.created_at,'project_owner_location':proObj.project_owner.Address,'project_owner_contact':proObj.project_owner.contact})
+            project_list.append({'id':proObj.id,'title':proObj.title,'description':proObj.description,'rate':proObj.rate,'fixed_budget':proObj.fixed_budget,'min_hourly_rate':proObj.min_hourly_rate,'max_hourly_rate':proObj.max_hourly_rate,'deadline':proObj.deadline,'skills_required':proObj.skills_required,'category':proObj.category,'project_owner_name':proObj.project_owner.first_Name,'project_creation_date':proObj.created_at,'project_owner_location':proObj.project_owner.Address,'project_owner_contact':proObj.project_owner.contact,'experience_level':proObj.experience_level})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':project_list}, status=status.HTTP_200_OK)
     
 
@@ -57,14 +57,32 @@ class ViewHirerSelfProject(generics.ListAPIView):
     permission_classes =[IsAuthenticated]
     serializer_class = ViewAllProjectSerializer
     
-    def get(Self,request,*args,**kwargs):
-        if request.user.type !="HIRER" or request.user.Block == True:
-            return Response ({'status': status.HTTP_403_FORBIDDEN,'message':'Your Profile is Blocked or Not a Hirer Profile','data':{}}, status=status.HTTP_403_FORBIDDEN)
-        hirerPro=[]
-        hirerlist=Project.objects.filter(project_owner_id=request.user.id).values()
-        for i in hirerlist:
-            hirerPro.append({'id':i['id'],'title':i['title'],'description':i['description'],'budget':i['budget'],'deadline':i['deadline'],'skills_required':i['skills_required'],'category':i['category'],'Project_created_at':i['created_at']})
-        return Response({'status': status.HTTP_200_OK,'message':'Ok','data':hirerPro}, status=status.HTTP_200_OK)
+    def get(self, request, *args, **kwargs):
+        if request.user.type != "HIRER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message':'Your Profile is Blocked or Not a Hirer Profile', 'data':{}}, status=status.HTTP_403_FORBIDDEN)
+        
+        hirerPro = []
+        hirer_projects = Project.objects.filter(project_owner_id=request.user.id)
+        
+        for project in hirer_projects:
+            hirerPro.append({
+                'id': project.id,
+                'title': project.title,
+                'description': project.description,
+                'Project_Rate': project.rate,
+                'Project_Fixed_Budget': project.fixed_budget,
+                'Project_Min_Hourly_Rate': project.min_hourly_rate,
+                'Project_Max_Hourly_Rate': project.max_hourly_rate,
+                'deadline': project.deadline,
+                'skills_required': project.skills_required,
+                'category': project.category,
+                'Project_created_at': project.created_at,
+                'project_owner_id': project.project_owner.id,
+                'project_owner_address': project.project_owner.Address,
+                'project_owner_created': project.project_owner.date_of_creation
+            })
+        
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': hirerPro}, status=status.HTTP_200_OK)
 
 
 class ProjectUpdateView(GenericAPIView,mixins.UpdateModelMixin):
@@ -241,30 +259,45 @@ class ViewAllFreelancerMembership(generics.ListAPIView):
 class AddReviewsView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AddReviewSeralizer
-    queryset = Review.objects.all()
 
-    def post(self,request,*args,**kwargs):
-        if request.user.type != 'HIRER' or request.user.Block==True:
-            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Hirer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
-        free_id=kwargs['pk']
+    def post(self, request, *args, **kwargs):
+        if request.user.type != 'HIRER' or request.user.Block == True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Your Id is Blocked or You are not a Hirer', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        
+        free_id = kwargs['pk']
         try:
             freelancerObj = Freelancer.objects.get(id=free_id)
         except Freelancer.DoesNotExist:
-             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
-        serializer = AddReviewSeralizer(data=request.data, context={'free_id': free_id, "user": request.user})
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Profile Not Found', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+
+        projects_id = request.data.get('projects')
+        if not projects_id:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'project_id is required in the request body', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            project = Project.objects.get(id=projects_id)
+        except Project.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Project Not Found', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+        
+        if project.project_owner != request.user:
+           return Response({'status': status.HTTP_403_FORBIDDEN, 'message': 'You are not the owner of this project', 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = AddReviewSeralizer(data=request.data, context={'free_id': free_id, "user": request.user, "project": project})
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response({'status': status.HTTP_200_OK, 'message': 'Review Added Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
         return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
     
 
 class ViewAllReviews(generics.ListAPIView):
+    
     serializer_class = ViewAllReviewSerializer
     queryset = Review.objects.all()
 
-    def get(self,request,*args,**kwargs):
+
+    def get(self, request, *args, **kwargs):
         free_id = self.kwargs['pk']
-        print(free_id)
         revdata = Review.objects.filter(created_for_id=free_id)
         if not revdata:
             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
@@ -274,7 +307,14 @@ class ViewAllReviews(generics.ListAPIView):
                 'Reviewee': rev_list.created_for.first_Name, 
                 'Reviewer': rev_list.created_by.first_Name,
                 'rating': rev_list.rating,
-                'review': rev_list.review
+                'review': rev_list.review,
+                'Project_Name':rev_list.projects.title,
+                'project_Rate':rev_list.projects.rate,
+                'project_Budget':rev_list.projects.fixed_budget,
+                'project_Min_Hourly_Rate':rev_list.projects.min_hourly_rate,
+                'project_Max_Hourly_Rate':rev_list.projects.max_hourly_rate,
+                'project_deadline':rev_list.projects.deadline,
+                'reviews_created_date':rev_list.created_at
             })
         return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': rev}, status=status.HTTP_200_OK)
 
@@ -328,9 +368,6 @@ class FreelancerAddProjectView(generics.CreateAPIView):
 
 
 class ViewAllFreelancerProjects(generics.ListAPIView):
-    serializer_class = ViewAllFreelancerProjectSerializer
-    queryset = FreelancerProject.objects.all()
-
     def get(self, request, *args, **kwargs):
         free_id = self.kwargs['pk']
         proj_data = FreelancerProject.objects.filter(design_by_id=free_id)
@@ -339,6 +376,7 @@ class ViewAllFreelancerProjects(generics.ListAPIView):
         project_data = []
         for pro_list in proj_data:
             project_data.append({
+                'project_id':pro_list.id,
                 'project_title': pro_list.project_title, 
                 'project_description': pro_list.project_description,
                 'project_link': pro_list.project_link,
@@ -402,7 +440,7 @@ class ViewFreelancerSelfBid(generics.ListAPIView):
         for i in freelancelist:
             bidobj=Bid.objects.select_related().get(id=i['id'])
             print(bidobj,"bid")
-            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'budget':bidobj.project.budget,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at}})
+            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'Project_rate':bidobj.project.rate,'Project_budget':bidobj.project.fixed_budget,'Project_min_hourly_rate':bidobj.project.min_hourly_rate,'Project_max_hourly_rate':bidobj.project.max_hourly_rate,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at}})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceBid}, status=status.HTTP_200_OK)
 
 
@@ -423,3 +461,107 @@ class ViewFreelancerSelfProjectBid(generics.ListAPIView):
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceProjectBid}, status=status.HTTP_200_OK)  
 
 
+class SavedProjectsView(generics.CreateAPIView):
+
+    def post(self, request, *args, **kwargs):
+        if request.user.type != 'FREELANCER' or request.user.Block:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': 'Your Id is Blocked or You are not a Freelancer'}, status=status.HTTP_403_FORBIDDEN)
+        
+        project_id = kwargs['pk']
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        saved_project, created = SavedProject.objects.get_or_create(
+            freelancer=request.user,
+            project=project
+        )
+
+        if not created:
+            saved_project.delete()
+            return Response({'status': status.HTTP_200_OK, 'message': 'Project unsaved', 'isSaved': False}, status=status.HTTP_200_OK)
+
+        return Response({'status': status.HTTP_201_CREATED, 'message': 'Project saved', 'isSaved': True}, status=status.HTTP_201_CREATED)
+    
+
+
+class ViewAllSavedJobs(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            freelancer = request.user
+        except AttributeError:
+            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
+
+        saveddata = SavedProject.objects.filter(freelancer_id=freelancer)
+        
+        if not saveddata.exists():
+            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'No saved jobs found','data':{}}, status=status.HTTP_404_NOT_FOUND)
+
+        res = []
+        for save_list in saveddata:
+            res.append({
+                'Project_id': save_list.project.id,
+                'Project_Name': save_list.project.title ,
+                'Project_Description': save_list.project.description,
+                'deadline': save_list.project.deadline,
+                'Project_Rate': save_list.project.rate,
+                'Project_Fixed_Budget': save_list.project.fixed_budget,
+                'Project_Min_Hourly_Rate': save_list.project.min_hourly_rate,
+                'Project_Max_Hourly_Rate': save_list.project.max_hourly_rate,
+                'Project_skills':save_list.project.skills_required,
+                'Project_Created':save_list.project.created_at
+            })
+
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': res}, status=status.HTTP_200_OK)
+    
+
+class FreelancerEmploymentUpdateView(GenericAPIView,mixins.UpdateModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FreelancerEmploymentUpdateSeralizer
+
+    def put(self,request,*args,**kwargs):
+        if request.user.type != 'FREELANCER' or request.user.Block==True:
+            return Response({'status': status.HTTP_400_BAD_REQUEST,'message':'Your Id is Block or You are not a Freelancer','data':{}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            empObj = FreelancerEmployment.objects.select_related().get(id=kwargs['pk'])
+        except FreelancerEmployment.DoesNotExist:
+             return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Data Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)  
+        if empObj.add_by.id != request.user.id:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'This is not your employment data', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(instance=empObj, data=request.data, context={'empObj': empObj, "user": request.user})
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'status': status.HTTP_200_OK, 'message': 'Employment Data updated', 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class FreelancerAddEmploymentView(generics.CreateAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class=FreelancerAddEmploymentSerializer
+    def post(self, request,format=None):
+        serializer = FreelancerAddEmploymentSerializer(data=request.data,context={'user':request.user})
+        if serializer.is_valid(raise_exception=True):
+            user = serializer.save()
+            return Response({'status': status.HTTP_200_OK,'message':'Employment Data Added Successfully','data':serializer.data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}}, status=status.HTTP_400_BAD_REQUEST)
+    
+class ViewAllFreelancerEmployment(generics.ListAPIView):
+    def get(self, request, *args, **kwargs):
+        free_id = self.kwargs['pk']
+        emp_data = FreelancerEmployment.objects.filter(add_by_id=free_id)
+        if not emp_data:
+            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
+        employment_data = []
+        for emp_list in emp_data:
+            employment_data.append({
+                'emp_id':emp_list.id,
+                'Freelancer_Company_Name':emp_list.Freelancer_Company_Name,
+                'Company_Designation':emp_list.Company_Designation,
+                'Company_Joining_date':emp_list.Company_Joining_date,
+                'Company_Leaving_date':emp_list.Company_Leaving_date,
+                'design_by':emp_list.add_by.first_Name+" "+emp_list.add_by.last_Name,
+            })
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': employment_data}, status=status.HTTP_200_OK)

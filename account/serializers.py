@@ -19,19 +19,11 @@ class LoginSerializer(serializers.ModelSerializer):
 class HirerRegistrationSerializer(serializers.ModelSerializer):
     first_Name=serializers.CharField(max_length=25)
     last_Name=serializers.CharField(max_length=25)
-    Address=serializers.CharField(max_length=100,default='')
-    DOB=serializers.DateField(default='')
-    gender=serializers.ChoiceField(choices=["Male","Female"],default='')
-    about=serializers.CharField(max_length=200,default='')
-    Company_Establish=serializers.DateField(default='')
-    social_media=serializers.URLField(default='')
-    contact=serializers.CharField(max_length=10,default='')
-    map=serializers.URLField(default='')
-    Company_Name=serializers.CharField(max_length=100,default='')
     password2=serializers.CharField(style={'input_type':'password'},write_only=True)
+    
     class Meta:
         model=Hirer
-        fields=['email','first_Name','last_Name','contact','about','Company_Establish','social_media','map','Address','DOB','gender','Company_Name','password','password2','images_logo']
+        fields=['email','first_Name','last_Name','password','password2']
         extra_kwargs={
             'password':{'write_only':True}
         }
@@ -44,32 +36,17 @@ class HirerRegistrationSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-        Dob=self.validated_data['DOB']
-        Ced=self.validated_data['Company_Establish']
-        if Dob == '' or Ced == '':
-             return Hirer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'],contact=self.validated_data['contact'],about=self.validated_data['about'],social_media=self.validated_data['social_media'],map=self.validated_data['map'],Address=self.validated_data['Address'],gender=self.validated_data['gender'],Company_Name=self.validated_data['Company_Name'],images_logo=validated_data.get('images_logo'))
-        return Hirer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'],contact=self.validated_data['contact'],about=self.validated_data['about'],social_media=self.validated_data['social_media'],map=self.validated_data['map'],Address=self.validated_data['Address'],gender=self.validated_data['gender'],Company_Name=self.validated_data['Company_Name'],images_logo=validated_data.get('images_logo'),DOB=self.validated_data['DOB'],Company_Establish=self.validated_data['Company_Establish'])
+        return Hirer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'])
     
-
 
 class FreelancerRegistrationSerializer(serializers.ModelSerializer):
     first_Name=serializers.CharField(max_length=25)
     last_Name=serializers.CharField(max_length=25)
-    Address=serializers.CharField(max_length=100,default='')
-    DOB=serializers.DateField(default='')
-    gender=serializers.ChoiceField(choices=["Male","Female"],default='')
-    about=serializers.CharField(max_length=200,default='')
-    experience=serializers.IntegerField(default=0)
-    qualification=serializers.CharField(max_length=100,default='')
-    social_media=serializers.URLField(default='')
-    contact=serializers.CharField(max_length=10,default='')
-    map=serializers.URLField(default='')
     password2=serializers.CharField(style={'input_type':'password'},write_only=True)
-    skills = serializers.ListField(child=serializers.CharField(),default='')
-    category = serializers.ChoiceField(choices=["Web_development","Mobile_development","Web_designing","Software_development","Ui_Ux_designing","Logo_Designing","Graphics_designing","Cloud_computing","AI_ML","Data_Science"],default='')
+
     class Meta:
         model=Freelancer
-        fields=['email','first_Name','last_Name','contact','about','social_media','map','Address','DOB','gender','password','password2','images_logo','experience','qualification','skills','category']
+        fields=['email','first_Name','last_Name','password','password2']
         extra_kwargs={
             'password':{'write_only':True}
         }
@@ -82,10 +59,8 @@ class FreelancerRegistrationSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-       Dob=self.validated_data['DOB']
-       if Dob == '':
-            return Freelancer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'],contact=self.validated_data['contact'],about=self.validated_data['about'],social_media=self.validated_data['social_media'],map=self.validated_data['map'],Address=self.validated_data['Address'],gender=self.validated_data['gender'],images_logo=validated_data.get('images_logo'),experience=self.validated_data['experience'],qualification=self.validated_data['qualification'],skills=self.validated_data['skills'],category=self.validated_data['category'])
-       return Freelancer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'],contact=self.validated_data['contact'],about=self.validated_data['about'],social_media=self.validated_data['social_media'],map=self.validated_data['map'],Address=self.validated_data['Address'],DOB=self.validated_data['DOB'],gender=self.validated_data['gender'],images_logo=validated_data.get('images_logo'),experience=self.validated_data['experience'],qualification=self.validated_data['qualification'],skills=self.validated_data['skills'],category=self.validated_data['category'])
+       return Freelancer.objects.create(email=self.validated_data['email'],password=make_password(self.validated_data['password']),first_Name=self.validated_data['first_Name'],last_Name=self.validated_data['last_Name'])
+
 
     #    account_sid = "AC3dba40f693ec1a81aa10b122629100fa"
     #    auth_token  = "068a5bc902f4f4271958a21c5534f2ea"
@@ -96,7 +71,6 @@ class FreelancerRegistrationSerializer(serializers.ModelSerializer):
     #          from_='+17623549671',
     #          to='+917987893465') 
 
-       return validated_data
     
 class HirerSelfProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -111,7 +85,7 @@ class HirerSelfProfileSerializer(serializers.ModelSerializer):
 class FreelancerSelfProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Freelancer
-        fields =['id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category','about']
+        fields =['id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category','about','Language','hourly_rate','experience_level']
 
     def validate(self, attrs):
         return attrs
@@ -129,12 +103,11 @@ class HirerProfileUpdateSerializer(serializers.ModelSerializer):
     
 
 class FreelancerProfileUpdateSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(max_length = 200, required=False)
-    contact=serializers.CharField(max_length=10, required=False)
-    skills = serializers.ListField(child=serializers.CharField(),default='')
+    skills = serializers.ListField(child=serializers.CharField(), required=False)
+    Language = serializers.ListField(child=serializers.CharField(), required=False)
     class Meta:
         model = Freelancer
-        fields=['email','first_Name','last_Name','contact','Address','DOB','gender','images_logo','social_media','map','experience','qualification','skills','category']
+        fields=['first_Name','last_Name','Address','DOB','gender','images_logo','social_media','map','experience','qualification','skills','category','about','Language','hourly_rate','experience_level']
 
     def validate(self, attrs):
         return attrs
@@ -152,10 +125,10 @@ class ViewAllHirerSerializer(serializers.ModelSerializer):
 class ViewAllFreelancerSerializer(serializers.ModelSerializer):
     class Meta:
         model=Freelancer
-        fields=['id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category']
+        fields=['id','email','first_Name','last_Name','contact','Address','DOB','gender','type','images_logo','social_media','map','experience','qualification','skills','category','about','Language','hourly_rate','experience_level']
         
     def validate(self, attrs):
-        return attrs     
+        return attrs       
     
 
 class UserChangePasswordSerializer(serializers.Serializer):
