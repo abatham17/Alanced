@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Project,Bid,Membership,Review,FreelancerProject,FreelancerEmployment
+from . models import Project,Bid,Membership,Review,FreelancerProject,FreelancerEmployment, Subscription, UserContactUs
 from account.models import Freelancer
 
 
@@ -40,16 +40,17 @@ class ProjectUpdateSeralizer(serializers.ModelSerializer):
 
 class AddBidAmountSerializer(serializers.ModelSerializer):
     bid_amount = serializers.DecimalField(max_digits=10,decimal_places=2)
+    bid_type = serializers.ChoiceField(choices=["Hourly","Fixed"])
     
     class Meta:
         model = Bid
-        fields = ['bid_amount','description']
+        fields = ['bid_amount','description','bid_type']
     
     def create(self, validated_data):
         user=self.context.get('user')
         proj_id=self.context.get('proj_id')
         proj=Project.objects.get(id=proj_id)
-        return Bid.objects.create(bid_amount=self.validated_data['bid_amount'],description=self.validated_data['description'],freelancer=user,project=proj)
+        return Bid.objects.create(bid_amount=self.validated_data['bid_amount'],description=self.validated_data['description'],bid_type=self.validated_data['bid_type'],freelancer=user,project=proj)
 
 class ViewBidSerializer(serializers.ModelSerializer):
     class Meta:
@@ -60,7 +61,7 @@ class ViewBidSerializer(serializers.ModelSerializer):
 class EditBidSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bid
-        fields = ['bid_amount','description']
+        fields = ['bid_amount','description','bid_type']
 
 
 class ViewAllMembershipSerializer(serializers.ModelSerializer):
@@ -118,7 +119,7 @@ class FreelancerAddProjectSerializer(serializers.ModelSerializer):
     
 
 class FreelancerProjectUpdateSeralizer(serializers.ModelSerializer):
-    skills_used=serializers.ListField(child=serializers.CharField())
+    skills_used = serializers.ListField(child=serializers.CharField(), required=False) 
     class Meta:
         model = FreelancerProject
         fields = ['project_title','project_description','project_link','images_logo','project_pdf','category','skills_used']  
@@ -147,3 +148,18 @@ class FreelancerEmploymentUpdateSeralizer(serializers.ModelSerializer):
     class Meta:
         model = FreelancerEmployment
         fields = ['Freelancer_Company_Name','Company_Designation','Company_Joining_date','Company_Leaving_date'] 
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ['id', 'email', 'subscribed_at']
+
+
+class UserContantUsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserContactUs
+        fields = ['Applicant_Email','Applicant_Name','Applicant_Contact','Message']
+
+    def create(self, validated_data):
+        return UserContactUs.objects.create(Applicant_Email=self.validated_data['Applicant_Email'],Applicant_Name=self.validated_data['Applicant_Name'],Applicant_Contact=self.validated_data['Applicant_Contact'],Message=self.validated_data['Message'])

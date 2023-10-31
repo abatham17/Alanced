@@ -31,9 +31,13 @@ class Project(models.Model):
    
 
 class Bid(models.Model):
+    class Bid_Type(models.TextChoices):
+        Hourly = "Hourly", "hourly"
+        Fixed = "Fixed", "fixed"
     freelancer = models.ForeignKey(Freelancer, on_delete=models.DO_NOTHING,related_name='bid')
     project = models.ForeignKey(Project,on_delete=models.DO_NOTHING,related_name='bid')
-    bid_amount = models.DecimalField(max_digits=10,decimal_places=2)
+    bid_amount = models.DecimalField(max_digits=10,decimal_places=2, blank=True, null=True)
+    bid_type = models.CharField(choices=Bid_Type.choices,default="", max_length=15)
     description = models.TextField(default="")
     bid_time = models.DateTimeField(auto_now_add=True)
 
@@ -109,4 +113,18 @@ class FreelancerEmployment(models.Model):
         db_table="FreelancerEmployment"
 
 
+class Subscription(models.Model):
+    email = models.EmailField(unique=True, max_length=200)
+    subscribed_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table="Subscription"
+
+class UserContactUs(models.Model):
+    Applicant_Email = models.EmailField(unique=True, max_length=200)
+    Applicant_Name = models.CharField(max_length=25, default='')
+    Applicant_Contact = models.CharField(max_length=10, default='')
+    Message = models.TextField(default='') 
+
+    class Meta:
+        db_table="UserContactUs"

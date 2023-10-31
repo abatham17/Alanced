@@ -4,7 +4,7 @@ from .import views
 
 urlpatterns =[
     path('Add/Project',views.AddProjectView.as_view()),
-    path('view-all/Project',views.ViewAllProject.as_view()),
+    path('view-all/Project/',views.ViewAllProject.as_view(), name='project-filter'),
     path('view/project/<str:pk>',views.ViewProjectById.as_view()),
     path('view/hirer-self/Project',views.ViewHirerSelfProject.as_view()),
     path('update/project/<str:pk>',views.ProjectUpdateView.as_view()),

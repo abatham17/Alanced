@@ -13,6 +13,8 @@ from smtputils import Util
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import default_token_generator
+from django.db.models import Q
+from rest_framework import filters
 
 # Create your views here.
 
@@ -189,10 +191,64 @@ class AllHirerView(generics.ListAPIView):
 
 class AllFreelancerView(generics.ListAPIView):
     serializer_class=ViewAllFreelancerSerializer
+    
     def get(self,request,format=None):
-        Freelancer_data=Freelancer.objects.all().values()
+        # Freelancer_data=Freelancer.objects.all().values()
+        queryset = Freelancer.objects.all().values()
+
+        address_filter = request.query_params.getlist('Address')
+        experience_filter = request.query_params.getlist('experience_level')
+        skills_param = request.query_params.getlist('skills')
+        language_param = request.query_params.getlist('Language')
+        hourly_rate_filter = request.query_params.getlist('hourly_rate')
+
+        # Search filter based on all fields
+        search_query = request.query_params.get('search_query')
+        if search_query:
+            queryset = queryset.filter(
+                Q(first_Name__icontains=search_query) |
+                Q(last_Name__icontains=search_query) |
+                Q(Address__icontains=search_query) |
+                Q(category__icontains=search_query) |
+                Q(experience_level__icontains=search_query) |
+                Q(skills__icontains=search_query) |
+                Q(hourly_rate__icontains=search_query) |
+                Q(about__icontains=search_query) 
+            )
+
+        if address_filter:
+            address_filter_q = Q()
+            for address in address_filter:
+                address_filter_q |= Q(Address=address)
+            queryset = queryset.filter(address_filter_q)
+
+        if experience_filter:
+            experience_filter_q = Q()
+            for experience in experience_filter:
+                experience_filter_q |= Q(experience_level=experience)
+            queryset = queryset.filter(experience_filter_q)
+
+        if skills_param:
+            skill_filter_q = Q()
+            for skills in skills_param:
+                skill_filter_q |= Q(skills__contains=skills)
+            queryset = queryset.filter(skill_filter_q)
+
+        if language_param:
+            language_filter_q = Q()
+            for language in language_param:
+                language_filter_q |= Q(Language__contains=language)
+            queryset = queryset.filter(language_filter_q)
+
+        if hourly_rate_filter:
+            hourly_rate_filter_q = Q()
+            for hourly_rate in hourly_rate_filter:
+                hourly_rate_filter_q |= Q(hourly_rate=hourly_rate)
+            queryset = queryset.filter(hourly_rate_filter_q)
+
+
         Freelancerlist=[]
-        for i in Freelancer_data:
+        for i in queryset:
             Freelancerlist.append({'id':i['id'],'email':i['email'],'first_Name':i['first_Name'],'last_Name':i['last_Name'],'contact':i['contact'],'Address':i['Address'],'DOB':i['DOB'],'gender':i['gender'],'experience':i['experience'],'type':i['type'],'images_logo':'/media/'+i['images_logo'],'qualification':i['qualification'],'social_media':i['social_media'],'map':i['map'],'skills':i['skills'],'category': i['category'],'Language':i['Language'],'hourly_rate':i['hourly_rate'],'experience_level':i['experience_level'],'about':i['about']})
         return Response({'status':status.HTTP_200_OK,'message':"Ok",'data':Freelancerlist},status=status.HTTP_200_OK)          
     

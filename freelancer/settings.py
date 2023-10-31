@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'account',
     'FreelanceTask',
     'django_cleanup.apps.CleanupConfig',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -107,6 +108,7 @@ REST_FRAMEWORK = {
     'DATE_INPUT_FORMATS':[("%d-%m-%Y"),],
     'TIME_INPUT_FORMATS' : [ ("%I:%M %p"),],
     'EXCEPTION_HANDLER':'utils.exceptionhandler.custom_exception_handler',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )

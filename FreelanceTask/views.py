@@ -1,15 +1,17 @@
 from django.shortcuts import render
-from . models import Project,Bid,Membership,Review,FreelancerProject,SavedProject,FreelancerEmployment
+from . models import Project,Bid,Membership,Review,FreelancerProject,SavedProject,FreelancerEmployment,Subscription,UserContactUs
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer,ViewAllMembershipSerializer,AddReviewSeralizer,EditReviewSeralizer,FreelancerAddProjectSerializer,FreelancerProjectUpdateSeralizer,ViewAllReviewSerializer,ViewAllFreelancerProjectSerializer,FreelancerEmploymentUpdateSeralizer,FreelancerAddEmploymentSerializer
+from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer,ViewAllMembershipSerializer,AddReviewSeralizer,EditReviewSeralizer,FreelancerAddProjectSerializer,FreelancerProjectUpdateSeralizer,ViewAllReviewSerializer,ViewAllFreelancerProjectSerializer,FreelancerEmploymentUpdateSeralizer,FreelancerAddEmploymentSerializer,SubscriptionSerializer,UserContantUsSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from account.models import Hirer,Freelancer
 from datetime import datetime
+from django.db.models import Q
+from rest_framework import filters, viewsets
 
 # Create your views here.
 
@@ -27,13 +29,95 @@ class AddProjectView(generics.CreateAPIView):
 class ViewAllProject(generics.ListAPIView):
     serializer_class = ViewAllProjectSerializer
 
-    def get(self,request,format=None):
-        project_data=Project.objects.all().values('id')
-        project_list=[]
-        for i in project_data:
-            proObj=Project.objects.select_related().get(id=i['id'])
-            project_list.append({'id':proObj.id,'title':proObj.title,'description':proObj.description,'rate':proObj.rate,'fixed_budget':proObj.fixed_budget,'min_hourly_rate':proObj.min_hourly_rate,'max_hourly_rate':proObj.max_hourly_rate,'deadline':proObj.deadline,'skills_required':proObj.skills_required,'category':proObj.category,'project_owner_name':proObj.project_owner.first_Name,'project_creation_date':proObj.created_at,'project_owner_location':proObj.project_owner.Address,'project_owner_contact':proObj.project_owner.contact,'experience_level':proObj.experience_level})
-        return Response({'status': status.HTTP_200_OK,'message':'Ok','data':project_list}, status=status.HTTP_200_OK)
+    def get(self, request, format=None):
+        # Start with the base queryset
+        queryset = Project.objects.all()
+
+        # Define filters based on query parameters
+        category_filter = request.query_params.getlist('category')
+        address_filter = request.query_params.getlist('project_owner_location')
+        experience_filter = request.query_params.getlist('experience_level')
+        # skills_filter = request.GET.get('skills_required')
+        rate_filter = request.query_params.getlist('rate')
+        skills_param = request.query_params.getlist('skills_required')
+        min_hourly_rate_filter = request.query_params.get('min_hourly_rate')
+        max_hourly_rate_filter = request.query_params.get('max_hourly_rate')
+
+        # Search filter based on all fields
+        search_query = request.query_params.get('search_query')
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(rate__icontains=search_query) |
+                Q(category__icontains=search_query) |
+                Q(experience_level__icontains=search_query) |
+                Q(skills_required__icontains=search_query) |
+                Q(project_owner__first_Name__icontains=search_query) |
+                Q(project_owner__Address__icontains=search_query) |
+                Q(project_owner__contact__icontains=search_query)
+            )
+
+
+        if category_filter:
+            category_filter_q = Q()
+            for category in category_filter:
+                category_filter_q |= Q(category=category)
+            queryset = queryset.filter(category_filter_q)
+
+        if address_filter:
+            address_filter_q = Q()
+            for address in address_filter:
+                address_filter_q |= Q(project_owner__Address=address)
+            queryset = queryset.filter(address_filter_q)
+
+        if experience_filter:
+            experience_filter_q = Q()
+            for experience in experience_filter:
+                experience_filter_q |= Q(experience_level=experience)
+            queryset = queryset.filter(experience_filter_q)
+
+        if rate_filter:
+            rate_filter_q = Q()
+            for rate in rate_filter:
+                rate_filter_q |= Q(rate=rate)
+            queryset = queryset.filter(rate_filter_q)
+
+        # Filter based on min_hourly_rate and max_hourly_rate
+        if min_hourly_rate_filter:
+            queryset = queryset.filter(min_hourly_rate__gte=min_hourly_rate_filter)
+        if max_hourly_rate_filter:
+            queryset = queryset.filter(max_hourly_rate__lte=max_hourly_rate_filter)
+
+            
+        if skills_param:
+            skill_filter_q = Q()
+            for skills in skills_param:
+                skill_filter_q |= Q(skills_required__contains=skills)
+            queryset = queryset.filter(skill_filter_q)
+
+       
+        project_list = []
+        for proObj in queryset:
+            project_list.append({
+                'id': proObj.id,
+                'title': proObj.title,
+                'description': proObj.description,
+                'rate': proObj.rate,
+                'fixed_budget': proObj.fixed_budget,
+                'min_hourly_rate': proObj.min_hourly_rate,
+                'max_hourly_rate': proObj.max_hourly_rate,
+                'deadline': proObj.deadline,
+                'skills_required': proObj.skills_required,
+                'category': proObj.category,
+                'project_owner_name': proObj.project_owner.first_Name,
+                'project_creation_date': proObj.created_at,
+                'project_owner_location': proObj.project_owner.Address,
+                'project_owner_contact': proObj.project_owner.contact,
+                'experience_level': proObj.experience_level,
+            })
+
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': project_list}, status=status.HTTP_200_OK)
     
 
 class ViewProjectById(GenericAPIView,mixins.RetrieveModelMixin):
@@ -167,7 +251,7 @@ class ViewBidById(GenericAPIView,mixins.RetrieveModelMixin):
                 obj_call=Bid.objects.select_related().get(id=i['id'])
                 formatted_date = obj_call.bid_time.strftime("%Y-%m-%d %I:%M %p")
                 print(formatted_date)
-                my_bids.append({'id': obj_call.id,'bid_amount': obj_call.bid_amount,'description': obj_call.description,'bid_time':formatted_date,'freelancer_Name':obj_call.freelancer.first_Name+" "+obj_call.freelancer.last_Name,'project_id':obj_call.project.id,'freelancer_category':obj_call.freelancer.category,'freelancer_address':obj_call.freelancer.Address,'Freelancer_skills':obj_call.freelancer.skills,'freelancer_profilepic':'/media/'+str(obj_call.freelancer.images_logo),'freelancer_about':obj_call.freelancer.about,"project":{'title':obj_call.project.title,'description':obj_call.project.description,'category':obj_call.project.category,'skills_required':obj_call.project.skills_required,'deadline':obj_call.project.deadline,'budget':obj_call.project.budget,'created_at':obj_call.project.created_at}})
+                my_bids.append({'id': obj_call.id,'bid_amount': obj_call.bid_amount,'description': obj_call.description,'bid_type':obj_call.bid_type,'bid_time':formatted_date,'freelancer_Name':obj_call.freelancer.first_Name+" "+obj_call.freelancer.last_Name,'project_id':obj_call.project.id,'freelancer_category':obj_call.freelancer.category,'freelancer_address':obj_call.freelancer.Address,'Freelancer_skills':obj_call.freelancer.skills,'freelancer_profilepic':'/media/'+str(obj_call.freelancer.images_logo),'freelancer_about':obj_call.freelancer.about,"project":{'title':obj_call.project.title,'description':obj_call.project.description,'category':obj_call.project.category,'skills_required':obj_call.project.skills_required,'deadline':obj_call.project.deadline,'fixed_budget':obj_call.project.fixed_budget,'rate':obj_call.project.rate,'min_hourly_rate':obj_call.project.min_hourly_rate,'max_hourly_rate':obj_call.project.max_hourly_rate, 'created_at':obj_call.project.created_at}})
             return Response({'status': status.HTTP_200_OK, 'message': 'OK', 'data': my_bids}, status=status.HTTP_200_OK)
         else:
             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'No bids found for this project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
@@ -440,7 +524,7 @@ class ViewFreelancerSelfBid(generics.ListAPIView):
         for i in freelancelist:
             bidobj=Bid.objects.select_related().get(id=i['id'])
             print(bidobj,"bid")
-            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'Project_rate':bidobj.project.rate,'Project_budget':bidobj.project.fixed_budget,'Project_min_hourly_rate':bidobj.project.min_hourly_rate,'Project_max_hourly_rate':bidobj.project.max_hourly_rate,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at}})
+            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_type':bidobj.bid_type,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'Project_rate':bidobj.project.rate,'Project_budget':bidobj.project.fixed_budget,'Project_min_hourly_rate':bidobj.project.min_hourly_rate,'Project_max_hourly_rate':bidobj.project.max_hourly_rate,'Project_experience_level':bidobj.project.experience_level,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at}})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceBid}, status=status.HTTP_200_OK)
 
 
@@ -457,7 +541,7 @@ class ViewFreelancerSelfProjectBid(generics.ListAPIView):
         for i in freelanceProjectlist:
             probidobj=Bid.objects.select_related().get(id=i['id'])
             print(probidobj,"bid")
-            freelanceProjectBid.append({'id':probidobj.id,'bid_amount':probidobj.bid_amount,'description':probidobj.description,'bid_time':probidobj.bid_time,'freelancer_id':probidobj.freelancer_id,'project_id':probidobj.project_id,"project":{'title':probidobj.project.title,'category':probidobj.project.category,'description':probidobj.project.description,'skills_required':probidobj.project.skills_required,'budget':probidobj.project.budget,'deadline':probidobj.project.deadline,'created_at':probidobj.project.created_at}})
+            freelanceProjectBid.append({'id':probidobj.id,'bid_amount':probidobj.bid_amount,'description':probidobj.description,'bid_type':probidobj.bid_type,'bid_time':probidobj.bid_time,'freelancer_id':probidobj.freelancer_id,'project_id':probidobj.project_id,"project":{'title':probidobj.project.title,'category':probidobj.project.category,'description':probidobj.project.description,'skills_required':probidobj.project.skills_required,'deadline':probidobj.project.deadline,'fixed_budget':probidobj.project.fixed_budget,'rate':probidobj.project.rate,'min_hourly_rate':probidobj.project.min_hourly_rate,'max_hourly_rate':probidobj.project.max_hourly_rate,'experience_level':probidobj.project.experience_level,'created_at':probidobj.project.created_at}})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceProjectBid}, status=status.HTTP_200_OK)  
 
 
@@ -512,7 +596,9 @@ class ViewAllSavedJobs(generics.ListAPIView):
                 'Project_Min_Hourly_Rate': save_list.project.min_hourly_rate,
                 'Project_Max_Hourly_Rate': save_list.project.max_hourly_rate,
                 'Project_skills':save_list.project.skills_required,
-                'Project_Created':save_list.project.created_at
+                'Project_Created':save_list.project.created_at,
+                'Project_Experience_level': save_list.project.experience_level,
+                'Project_Hirer_Location': save_list.project.project_owner.Address
             })
 
         return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': res}, status=status.HTTP_200_OK)
@@ -565,3 +651,27 @@ class ViewAllFreelancerEmployment(generics.ListAPIView):
                 'design_by':emp_list.add_by.first_Name+" "+emp_list.add_by.last_Name,
             })
         return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': employment_data}, status=status.HTTP_200_OK)
+    
+
+class SubscriptionView(generics.CreateAPIView):
+    queryset = Subscription.objects.all()
+    serializer_class = SubscriptionSerializer
+
+    def post(self, request):
+        serializer = SubscriptionSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'status': status.HTTP_201_CREATED,'message': ' Thankyou for Subscribe!','data': serializer.data}, status=status.HTTP_201_CREATED)
+        return Response({'status': status.HTTP_400_BAD_REQUEST,'message': serializer.errors,'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class UserContactUsView(generics.CreateAPIView):
+    queryset = UserContactUs.objects.all()
+    serializer_class = UserContantUsSerializer
+
+    def post(self, request):
+        serializer = UserContantUsSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'status':status.HTTP_201_CREATED,'message':'Your data has been Submitted','data':serializer.data},status=status.HTTP_201_CREATED)
+        return Response({'status':status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}},status=status.HTTP_400_BAD_REQUEST)
