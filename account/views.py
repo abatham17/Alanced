@@ -344,6 +344,7 @@ class googleLoginView(GenericAPIView):
      
 
 class CheckEmailExistsView(GenericAPIView):
+    queryset = UserAccount.objects.all()
 
     def post(self, request):
         email = request.data.get('email', None)

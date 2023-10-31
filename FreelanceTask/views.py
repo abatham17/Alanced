@@ -140,6 +140,7 @@ class ViewProjectById(GenericAPIView,mixins.RetrieveModelMixin):
 class ViewHirerSelfProject(generics.ListAPIView):
     permission_classes =[IsAuthenticated]
     serializer_class = ViewAllProjectSerializer
+    queryset = Project.objects.all()
     
     def get(self, request, *args, **kwargs):
         if request.user.type != "HIRER" or request.user.Block == True:
@@ -298,6 +299,7 @@ class BidUpdateView(GenericAPIView,mixins.UpdateModelMixin):
 
 class ViewAllHirerMembership(generics.ListAPIView):
     serializer_class = ViewAllMembershipSerializer
+    queryset = Membership.objects.all()
 
     def get(self, request, format=None):
         membership_data = Membership.objects.all().values()
@@ -320,6 +322,7 @@ class ViewAllHirerMembership(generics.ListAPIView):
 
 class ViewAllFreelancerMembership(generics.ListAPIView):
     serializer_class = ViewAllMembershipSerializer
+    queryset = Membership.objects.all()
 
     def get(self, request, format=None):
         membership_data = Membership.objects.all().values()
@@ -343,6 +346,7 @@ class ViewAllFreelancerMembership(generics.ListAPIView):
 class AddReviewsView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AddReviewSeralizer
+    queryset = Review.objects.all()
 
     def post(self, request, *args, **kwargs):
         if request.user.type != 'HIRER' or request.user.Block == True:
@@ -452,6 +456,8 @@ class FreelancerAddProjectView(generics.CreateAPIView):
 
 
 class ViewAllFreelancerProjects(generics.ListAPIView):
+    queryset = FreelancerProject.objects.all()
+    serializer_class = ViewAllFreelancerProjectSerializer
     def get(self, request, *args, **kwargs):
         free_id = self.kwargs['pk']
         proj_data = FreelancerProject.objects.filter(design_by_id=free_id)
@@ -515,6 +521,7 @@ class DeleteFreelancerProjectView(GenericAPIView,mixins.DestroyModelMixin):
 class ViewFreelancerSelfBid(generics.ListAPIView):
     permission_classes =[IsAuthenticated]
     serializer_class = ViewBidSerializer
+    queryset = Bid.objects.all()
     
     def get(Self,request,*args,**kwargs):
         if request.user.type !="FREELANCER" or request.user.Block == True:
@@ -531,6 +538,7 @@ class ViewFreelancerSelfBid(generics.ListAPIView):
 class ViewFreelancerSelfProjectBid(generics.ListAPIView):
     permission_classes =[IsAuthenticated]
     serializer_class = ViewBidSerializer
+    queryset = Bid.objects.all()
     
     def get(Self,request,*args,**kwargs):
         project_id = kwargs['pk']
@@ -546,6 +554,7 @@ class ViewFreelancerSelfProjectBid(generics.ListAPIView):
 
 
 class SavedProjectsView(generics.CreateAPIView):
+    queryset = SavedProject.objects.all()
 
     def post(self, request, *args, **kwargs):
         if request.user.type != 'FREELANCER' or request.user.Block:
@@ -572,6 +581,7 @@ class SavedProjectsView(generics.CreateAPIView):
 
 class ViewAllSavedJobs(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
+    queryset = SavedProject.objects.all()
 
     def get(self, request, *args, **kwargs):
         try:
@@ -607,6 +617,7 @@ class ViewAllSavedJobs(generics.ListAPIView):
 class FreelancerEmploymentUpdateView(GenericAPIView,mixins.UpdateModelMixin):
     permission_classes = [IsAuthenticated]
     serializer_class = FreelancerEmploymentUpdateSeralizer
+    queryset = FreelancerEmployment.objects.all()
 
     def put(self,request,*args,**kwargs):
         if request.user.type != 'FREELANCER' or request.user.Block==True:
@@ -635,6 +646,8 @@ class FreelancerAddEmploymentView(generics.CreateAPIView):
         return Response({'status': status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}}, status=status.HTTP_400_BAD_REQUEST)
     
 class ViewAllFreelancerEmployment(generics.ListAPIView):
+    queryset= FreelancerEmployment.objects.all()
+    serializer_class=FreelancerAddEmploymentSerializer
     def get(self, request, *args, **kwargs):
         free_id = self.kwargs['pk']
         emp_data = FreelancerEmployment.objects.filter(add_by_id=free_id)

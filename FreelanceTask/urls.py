@@ -30,5 +30,7 @@ urlpatterns =[
     path('update/Freelancer/Employment/<str:pk>',views.FreelancerEmploymentUpdateView.as_view()),
     path('saved-projects/<str:pk>',views.SavedProjectsView.as_view()),
     path('View-all/SavedProjects',views.ViewAllSavedJobs.as_view()),
+    path('add/subscribe', views.SubscriptionView.as_view(), name='subscribe'),
+    path('user/contact-us', views.UserContactUsView.as_view(), name='contact-us'),
 ]
    
