@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Project,Bid,Membership,Review,FreelancerProject,FreelancerEmployment, Subscription, UserContactUs
+from . models import Project,Bid,Membership,Review,FreelancerProject,FreelancerEmployment, Subscription, UserContactUs,ClientNotification,FreelancerNotification
 from account.models import Freelancer
 
 
@@ -163,3 +163,16 @@ class UserContantUsSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return UserContactUs.objects.create(Applicant_Email=self.validated_data['Applicant_Email'],Applicant_Name=self.validated_data['Applicant_Name'],Applicant_Contact=self.validated_data['Applicant_Contact'],Message=self.validated_data['Message'])
+    
+
+
+class ClientNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClientNotification
+        fields = '__all__' 
+
+
+class FreelancerNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FreelancerNotification
+        fields = '__all__'  

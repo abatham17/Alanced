@@ -183,7 +183,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
         'body':'''
         <h1>Welcome to Alanced</h1>
         <p>Click the button below to Reset Your Password:</p>
-        <a href="https://aparnawiz91.pythonanywhere.com/account/password/reset/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #0091F7;border-radius:5px;"><b>Reset Your Password</b></a>
+        <a href="http://localhost:3000/reset-user-password/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #0091F7;border-radius:5px;"><b>Reset Your Password</b></a>
     ''',
         'to_email':user.email
       }
@@ -224,3 +224,17 @@ class googleLoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAccount
         fields = ['email'] 
+
+#For message
+User = None
+
+if Freelancer:
+    User = Freelancer
+    
+if Hirer:
+    User = Hirer
+
+class UserSerializer(serializers.ModelSerializer):
+   class Meta:
+      model = User
+      fields = ["first_Name", "id"]

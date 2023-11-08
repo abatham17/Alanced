@@ -46,6 +46,9 @@ INSTALLED_APPS = [
     'FreelanceTask',
     'django_cleanup.apps.CleanupConfig',
     'django_filters',
+    'channels',
+    'chat',
+
 ]
 
 MIDDLEWARE = [
@@ -78,6 +81,19 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'freelancer.wsgi.application'
+ASGI_APPLICATION = 'freelancer.asgi.application' # for message api
+
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://redis-19425.c302.asia-northeast1-1.gce.cloud.redislabs.com:19425',
+        'OPTIONS': {
+            'PASSWORD': 'Sachin@90099',
+            'DB': 0,  # Use database 0 by default.
+        }
+    }
+}
 
 
 # Database
@@ -111,7 +127,9 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 8
 }
 
 
@@ -228,3 +246,13 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER ='aparnac.wiz91@gmail.com'
 EMAIL_HOST_PASSWORD = 'jctlnfvpzjxlbwrd'
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",   # for message api
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],
+        },
+    },
+}

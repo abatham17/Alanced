@@ -5,7 +5,7 @@ from rest_framework.response import responses,Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import LoginSerializer,HirerRegistrationSerializer,FreelancerRegistrationSerializer,HirerSelfProfileSerializer,FreelancerSelfProfileSerializer,HirerProfileUpdateSerializer,FreelancerProfileUpdateSerializer,ViewAllHirerSerializer,ViewAllFreelancerSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,googleLoginSerializer
+from.serializers import LoginSerializer,HirerRegistrationSerializer,FreelancerRegistrationSerializer,HirerSelfProfileSerializer,FreelancerSelfProfileSerializer,HirerProfileUpdateSerializer,FreelancerProfileUpdateSerializer,ViewAllHirerSerializer,ViewAllFreelancerSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,googleLoginSerializer,UserSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from rest_framework.parsers import MultiPartParser,FormParser
@@ -15,7 +15,10 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Q
 from rest_framework import filters
-
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, UpdateModelMixin
+from rest_framework.viewsets import GenericViewSet
+from rest_framework.decorators import action
 # Create your views here.
 
 
@@ -191,11 +194,12 @@ class AllHirerView(generics.ListAPIView):
 
 class AllFreelancerView(generics.ListAPIView):
     serializer_class=ViewAllFreelancerSerializer
+    pagination_class = PageNumberPagination
     
-    def get(self,request,format=None):
+    def get_queryset(self):
         # Freelancer_data=Freelancer.objects.all().values()
         queryset = Freelancer.objects.all().values()
-
+        request = self.request
         address_filter = request.query_params.getlist('Address')
         experience_filter = request.query_params.getlist('experience_level')
         skills_param = request.query_params.getlist('skills')
@@ -246,10 +250,17 @@ class AllFreelancerView(generics.ListAPIView):
                 hourly_rate_filter_q |= Q(hourly_rate=hourly_rate)
             queryset = queryset.filter(hourly_rate_filter_q)
 
-
+        return queryset
+    
+    def list(self,request,*args,**kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
         Freelancerlist=[]
         for i in queryset:
             Freelancerlist.append({'id':i['id'],'email':i['email'],'first_Name':i['first_Name'],'last_Name':i['last_Name'],'contact':i['contact'],'Address':i['Address'],'DOB':i['DOB'],'gender':i['gender'],'experience':i['experience'],'type':i['type'],'images_logo':'/media/'+i['images_logo'],'qualification':i['qualification'],'social_media':i['social_media'],'map':i['map'],'skills':i['skills'],'category': i['category'],'Language':i['Language'],'hourly_rate':i['hourly_rate'],'experience_level':i['experience_level'],'about':i['about']})
+
+        page = self.paginate_queryset(Freelancerlist)
+        if page is not None:
+            return self.get_paginated_response(page)
         return Response({'status':status.HTTP_200_OK,'message':"Ok",'data':Freelancerlist},status=status.HTTP_200_OK)          
     
 
@@ -355,4 +366,35 @@ class CheckEmailExistsView(GenericAPIView):
         if user:
             return Response({"exists": True, "type": user.type}, status=status.HTTP_200_OK)
         else:
-            return Response({"exists": False}, status=status.HTTP_200_OK)     
+            return Response({"exists": False}, status=status.HTTP_200_OK) 
+
+
+
+User = None
+
+if Freelancer:
+    User = Freelancer
+    
+if Hirer:
+    User = Hirer
+    
+class UserViewSet(RetrieveModelMixin, ListModelMixin, UpdateModelMixin, GenericViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    lookup_field = "first_Name"
+    
+    def get_queryset(self, *args, **kwargs):
+        assert isinstance(self.request.user.id, int)
+        return self.queryset.filter(id=self.request.user.id)
+    
+    @action(detail=False)
+    def me(self, request):
+        serializer = UserSerializer(request.user, context={"request": request})
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+    
+    @action(detail=False)
+    def all(self, request):
+        serializer = UserSerializer(
+            User.objects.all(), many=True, context={"request": request}
+        )
+        return Response(status=status.HTTP_200_ok, data=serializer.data)    

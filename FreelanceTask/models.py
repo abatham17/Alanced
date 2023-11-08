@@ -128,3 +128,25 @@ class UserContactUs(models.Model):
 
     class Meta:
         db_table="UserContactUs"
+
+
+class ClientNotification(models.Model):
+    hirer = models.ForeignKey(Hirer, on_delete=models.DO_NOTHING, related_name='hirer_notification')
+    title = models.CharField(max_length=200)
+    message = models.TextField(default='')
+    is_read = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table="ClientNotification"
+
+
+class FreelancerNotification(models.Model):
+    freelancer = models.ForeignKey(Freelancer, on_delete=models.DO_NOTHING, related_name='freelancer_notification')
+    title = models.CharField(max_length=200)
+    message = models.TextField(default='')
+    is_read = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table="FreelancerNotification" 

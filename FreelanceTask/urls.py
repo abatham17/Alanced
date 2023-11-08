@@ -32,5 +32,11 @@ urlpatterns =[
     path('View-all/SavedProjects',views.ViewAllSavedJobs.as_view()),
     path('add/subscribe', views.SubscriptionView.as_view(), name='subscribe'),
     path('user/contact-us', views.UserContactUsView.as_view(), name='contact-us'),
+    path('view/client-notifications', views.ClientNotificationListView.as_view()),
+    path('read/client-notification/<int:pk>', views.ClientNotificationUpdateView.as_view(), name='mark_notification_as_read'),
+    path('delete/client-notification/<int:id>', views.ClientNotificationDeleteView.as_view(), name='delete-notification'),
+    path('view/freelancer-notifications', views.FreelancerNotificationListView.as_view()),
+    path('read/freelancer-notification/<int:pk>', views.FreelancerNotificationUpdateView.as_view()),
+    path('delete/freelancer-notification/<int:id>', views.FreelancerNotificationDeleteView.as_view()),
 ]
    

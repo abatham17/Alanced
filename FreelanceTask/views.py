@@ -1,17 +1,19 @@
 from django.shortcuts import render
-from . models import Project,Bid,Membership,Review,FreelancerProject,SavedProject,FreelancerEmployment,Subscription,UserContactUs
+from . models import Project,Bid,Membership,Review,FreelancerProject,SavedProject,FreelancerEmployment,Subscription,UserContactUs,ClientNotification,FreelancerNotification
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
-from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer,ViewAllMembershipSerializer,AddReviewSeralizer,EditReviewSeralizer,FreelancerAddProjectSerializer,FreelancerProjectUpdateSeralizer,ViewAllReviewSerializer,ViewAllFreelancerProjectSerializer,FreelancerEmploymentUpdateSeralizer,FreelancerAddEmploymentSerializer,SubscriptionSerializer,UserContantUsSerializer
+from.serializers import AddProjectSerializer,ViewAllProjectSerializer,ProjectUpdateSeralizer,AddBidAmountSerializer,ViewBidSerializer,EditBidSerializer,ViewAllMembershipSerializer,AddReviewSeralizer,EditReviewSeralizer,FreelancerAddProjectSerializer,FreelancerProjectUpdateSeralizer,ViewAllReviewSerializer,ViewAllFreelancerProjectSerializer,FreelancerEmploymentUpdateSeralizer,FreelancerAddEmploymentSerializer,SubscriptionSerializer,UserContantUsSerializer,ClientNotificationSerializer,FreelancerNotificationSerializer
 from rest_framework import status
 from rest_framework import generics,mixins
 from account.models import Hirer,Freelancer
 from datetime import datetime
 from django.db.models import Q
 from rest_framework import filters, viewsets
+from rest_framework.pagination import PageNumberPagination
+from smtputils import Util
 
 # Create your views here.
 
@@ -28,16 +30,17 @@ class AddProjectView(generics.CreateAPIView):
 
 class ViewAllProject(generics.ListAPIView):
     serializer_class = ViewAllProjectSerializer
+    pagination_class = PageNumberPagination
 
-    def get(self, request, format=None):
+    def get_queryset(self):
         # Start with the base queryset
         queryset = Project.objects.all()
+        request = self.request
 
         # Define filters based on query parameters
         category_filter = request.query_params.getlist('category')
         address_filter = request.query_params.getlist('project_owner_location')
         experience_filter = request.query_params.getlist('experience_level')
-        # skills_filter = request.GET.get('skills_required')
         rate_filter = request.query_params.getlist('rate')
         skills_param = request.query_params.getlist('skills_required')
         min_hourly_rate_filter = request.query_params.get('min_hourly_rate')
@@ -88,7 +91,6 @@ class ViewAllProject(generics.ListAPIView):
             queryset = queryset.filter(min_hourly_rate__gte=min_hourly_rate_filter)
         if max_hourly_rate_filter:
             queryset = queryset.filter(max_hourly_rate__lte=max_hourly_rate_filter)
-
             
         if skills_param:
             skill_filter_q = Q()
@@ -96,6 +98,10 @@ class ViewAllProject(generics.ListAPIView):
                 skill_filter_q |= Q(skills_required__contains=skills)
             queryset = queryset.filter(skill_filter_q)
 
+        return queryset
+    
+    def list(self,request,*args,**kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
        
         project_list = []
         for proObj in queryset:
@@ -117,6 +123,9 @@ class ViewAllProject(generics.ListAPIView):
                 'experience_level': proObj.experience_level,
             })
 
+        page = self.paginate_queryset(project_list)
+        if page is not None:
+            return self.get_paginated_response(page)
         return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': project_list}, status=status.HTTP_200_OK)
     
 
@@ -140,16 +149,38 @@ class ViewProjectById(GenericAPIView,mixins.RetrieveModelMixin):
 class ViewHirerSelfProject(generics.ListAPIView):
     permission_classes =[IsAuthenticated]
     serializer_class = ViewAllProjectSerializer
-    queryset = Project.objects.all()
+    pagination_class =PageNumberPagination
     
-    def get(self, request, *args, **kwargs):
+    def get_queryset(self):
+        queryset=Project.objects.filter(project_owner_id=self.request.user.id)
+        return queryset
+    
+    def list(self,request,*args,**kwargs):
         if request.user.type != "HIRER" or request.user.Block == True:
             return Response({'status': status.HTTP_403_FORBIDDEN, 'message':'Your Profile is Blocked or Not a Hirer Profile', 'data':{}}, status=status.HTTP_403_FORBIDDEN)
         
-        hirerPro = []
-        hirer_projects = Project.objects.filter(project_owner_id=request.user.id)
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Apply search filter
+        search_query = self.request.query_params.get('search_query')
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(rate__icontains=search_query) |
+                Q(category__icontains=search_query) |
+                Q(experience_level__icontains=search_query) |
+                Q(skills_required__icontains=search_query)
+            )
+
+        # Check if queryset exists after applying the search filter
+        if not queryset.exists():
+            return Response({'status': status.HTTP_200_OK, 'message': 'No results found', 'data': []}, status=status.HTTP_200_OK)
         
-        for project in hirer_projects:
+        hirerPro = []
+        # hirer_projects = Project.objects.filter(project_owner_id=request.user.id)
+        
+        for project in queryset:
             hirerPro.append({
                 'id': project.id,
                 'title': project.title,
@@ -164,9 +195,13 @@ class ViewHirerSelfProject(generics.ListAPIView):
                 'Project_created_at': project.created_at,
                 'project_owner_id': project.project_owner.id,
                 'project_owner_address': project.project_owner.Address,
-                'project_owner_created': project.project_owner.date_of_creation
+                'project_owner_created': project.project_owner.date_of_creation,
+                'experience_level': project.experience_level
             })
-        
+
+        page = self.paginate_queryset(hirerPro)
+        if page is not None:
+            return self.get_paginated_response(page)
         return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': hirerPro}, status=status.HTTP_200_OK)
 
 
@@ -232,30 +267,127 @@ class AddBidView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
+        hireremail = pro_bid.project_owner.email
+        data = {
+            'email_subject': "New Proposal Received",
+            'body': '''
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+                .container {
+                    background-color: #F2F2F2;
+                    margin: 0 auto;
+                    padding:50px 130px;
+                } 
+                .header {
+                    background-color:white;
+                    padding: 15px 30px;
+                }
+            </style>
+            </head>
+            <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="color: green;letter-spacing: 2px;font-size:22px;">ALANCED</h1>
+                    <h3>Congrats! You have Received A New Proposal!!</h3>
+                    <p style="font-size:15px">Hi Client, On Your Project You Have Received A New Proposal.</p>
+                    <a href="http://localhost:3000/" type="button" style="border: none;color: white;padding: 10px 20px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>View Proposal</b></a>
+                    <h3>Thank You, <br>Team Alanced.</h3>
+                </div>
+            </div>
+            </body>
+            </html>
+            ''',
+            'to_email': hireremail
+        }
+
+        Util.send_email(data)
+
+
+        # Notify the project's owner about the new bid
+        ClientNotification.objects.create(
+            hirer=pro_bid.project_owner,
+            title="New Bid Received",
+            message=f"{request.user.first_Name} {request.user.last_Name} has placed a bid on your project {pro_bid.title}."
+        )
+
         return Response({'status': status.HTTP_200_OK, 'message': 'Add Bid Amount Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
     
 
-class ViewBidById(GenericAPIView,mixins.RetrieveModelMixin):
+class ViewBidById(generics.ListAPIView):
     # serializer_class = [IsAuthenticated]
     serializer_class = ViewBidSerializer
-    queryset = Bid.objects.all()
+    # queryset = Bid.objects.all()
+    pagination_class= PageNumberPagination
 
-    def get(self, request, *args, **kwargs):
-        project_id = kwargs['pk']
+    def get_queryset(self):
+        project_id = self.kwargs['pk']
         chk_bid = Bid.objects.filter(project_id=project_id)
         
         
         if chk_bid.exists():
-            bids = Bid.objects.filter(project_id=project_id).values('id')
-            my_bids=[]
-            for i in bids:
-                obj_call=Bid.objects.select_related().get(id=i['id'])
-                formatted_date = obj_call.bid_time.strftime("%Y-%m-%d %I:%M %p")
-                print(formatted_date)
-                my_bids.append({'id': obj_call.id,'bid_amount': obj_call.bid_amount,'description': obj_call.description,'bid_type':obj_call.bid_type,'bid_time':formatted_date,'freelancer_Name':obj_call.freelancer.first_Name+" "+obj_call.freelancer.last_Name,'project_id':obj_call.project.id,'freelancer_category':obj_call.freelancer.category,'freelancer_address':obj_call.freelancer.Address,'Freelancer_skills':obj_call.freelancer.skills,'freelancer_profilepic':'/media/'+str(obj_call.freelancer.images_logo),'freelancer_about':obj_call.freelancer.about,"project":{'title':obj_call.project.title,'description':obj_call.project.description,'category':obj_call.project.category,'skills_required':obj_call.project.skills_required,'deadline':obj_call.project.deadline,'fixed_budget':obj_call.project.fixed_budget,'rate':obj_call.project.rate,'min_hourly_rate':obj_call.project.min_hourly_rate,'max_hourly_rate':obj_call.project.max_hourly_rate, 'created_at':obj_call.project.created_at}})
-            return Response({'status': status.HTTP_200_OK, 'message': 'OK', 'data': my_bids}, status=status.HTTP_200_OK)
+            bids = Bid.objects.filter(project_id=project_id)
+            return bids
         else:
-            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'No bids found for this project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+            return Bid.objects.none()
+        
+    def list(self,request,*args,**kwargs):
+            queryset=self.filter_queryset(self.get_queryset())
+            search_query = self.request.query_params.get('search_query')
+            if search_query:
+                queryset = queryset.filter(
+                    Q(bid_amount__icontains=search_query) |
+                    Q(description__icontains=search_query) |
+                    Q(bid_type__icontains=search_query) 
+                )
+
+
+            if not queryset.exists():
+                return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'No bids found for this project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+            my_bids=[]
+            for bid in queryset:
+                formatted_date = bid.bid_time.strftime("%Y-%m-%d %I:%M %p")
+                my_bids.append({
+                    'id': bid.id,
+                    'bid_amount': bid.bid_amount,
+                    'description': bid.description,
+                    'bid_type': bid.bid_type,
+                    'bid_time': formatted_date,
+                    'freelancer_Name': f"{bid.freelancer.first_Name} {bid.freelancer.last_Name}",
+                    'project_id': bid.project.id,
+                    'freelancer_id':bid.freelancer.id,
+                    'freelancer_category': bid.freelancer.category,
+                    'freelancer_address': bid.freelancer.Address,
+                    'Freelancer_skills': bid.freelancer.skills,
+                    'freelancer_profilepic': '/media/' + str(bid.freelancer.images_logo),
+                    'freelancer_about': bid.freelancer.about,
+                    'freelancer_hourly_rate':bid.freelancer.hourly_rate,
+                    'freelancer_experience_level':bid.freelancer.experience_level,
+                    'Freelancer_Languages': bid.freelancer.Language,
+                    'Freelancer_qualification':bid.freelancer.qualification,
+                    "project": {
+                        'title': bid.project.title,
+                        'description': bid.project.description,
+                        'category': bid.project.category,
+                        'skills_required': bid.project.skills_required,
+                        'deadline': bid.project.deadline,
+                        'fixed_budget': bid.project.fixed_budget,
+                        'rate': bid.project.rate,
+                        'min_hourly_rate': bid.project.min_hourly_rate,
+                        'max_hourly_rate': bid.project.max_hourly_rate,
+                        'created_at': bid.project.created_at,
+                    }
+                })
+
+            # Apply pagination on the manually constructed my_bids
+            page = self.paginate_queryset(my_bids)
+
+            if page is not None:
+                return self.get_paginated_response(page)
+
+
+            return Response({'status': status.HTTP_200_OK, 'message': 'OK', 'data': my_bids}, status=status.HTTP_200_OK)
 
 
 class DeleteBidView(GenericAPIView,mixins.DestroyModelMixin):
@@ -346,7 +478,6 @@ class ViewAllFreelancerMembership(generics.ListAPIView):
 class AddReviewsView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AddReviewSeralizer
-    queryset = Review.objects.all()
 
     def post(self, request, *args, **kwargs):
         if request.user.type != 'HIRER' or request.user.Block == True:
@@ -355,6 +486,7 @@ class AddReviewsView(generics.CreateAPIView):
         free_id = kwargs['pk']
         try:
             freelancerObj = Freelancer.objects.get(id=free_id)
+            print(freelancerObj.email)
         except Freelancer.DoesNotExist:
             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Profile Not Found', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
 
@@ -373,6 +505,46 @@ class AddReviewsView(generics.CreateAPIView):
         serializer = AddReviewSeralizer(data=request.data, context={'free_id': free_id, "user": request.user, "project": project})
         if serializer.is_valid(raise_exception=True):
             serializer.save()
+            freelanceremail = freelancerObj.email
+            data = {
+                'email_subject': "New Review Received",
+                'body': '''
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <style>
+                    .container {
+                        background-color: #F2F2F2;
+                        margin: 0 auto;
+                        padding:50px 130px;
+                    } 
+                    .header {
+                        background-color:white;
+                        padding: 15px 30px;
+                    }
+                </style>
+                </head>
+                <body>
+                <div class="container">
+                    <div class="header">
+                        <h1 style="color: green;letter-spacing: 2px;font-size:22px;">ALANCED</h1>
+                        <h3>Congrats! You have Received A New Review!!</h3>
+                        <p style="font-size:15px">Hi Freelancer, On Your Project You Have Received A New Review.</p>
+                        <a href="http://localhost:3000/" type="button" style="border: none;color: white;padding: 10px 20px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>View Review</b></a>
+                        <h3>Thank You, <br>Team Alanced.</h3>
+                    </div>
+                </div>
+                </body>
+                </html>
+                ''',
+                'to_email': freelanceremail
+            }
+
+            Util.send_email(data)
+            FreelancerNotification.objects.create(
+            freelancer=freelancerObj, 
+            title="New Review Received", 
+            message=f"{request.user.first_Name} {request.user.last_Name} has been added a review for you on project {project.title}.")
             return Response({'status': status.HTTP_200_OK, 'message': 'Review Added Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
         return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -455,14 +627,15 @@ class FreelancerAddProjectView(generics.CreateAPIView):
         return Response({'status': status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 6     
+
 class ViewAllFreelancerProjects(generics.ListAPIView):
-    queryset = FreelancerProject.objects.all()
-    serializer_class = ViewAllFreelancerProjectSerializer
-    def get(self, request, *args, **kwargs):
+    pagination_class=CustomPageNumberPagination
+    def get_queryset(self):
         free_id = self.kwargs['pk']
         proj_data = FreelancerProject.objects.filter(design_by_id=free_id)
-        if not proj_data:
-            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
+
         project_data = []
         for pro_list in proj_data:
             project_data.append({
@@ -476,7 +649,18 @@ class ViewAllFreelancerProjects(generics.ListAPIView):
                 'category':pro_list.category,
                 'design_by':pro_list.design_by.first_Name+" "+pro_list.design_by.last_Name,
             })
-        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': project_data}, status=status.HTTP_200_OK)
+        return project_data
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Apply pagination on the queryset
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            return self.get_paginated_response(page)
+
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': queryset}, status=status.HTTP_200_OK)
     
 
 class FreelancerProjectUpdateView(GenericAPIView,mixins.UpdateModelMixin):
@@ -519,20 +703,57 @@ class DeleteFreelancerProjectView(GenericAPIView,mixins.DestroyModelMixin):
 
 
 class ViewFreelancerSelfBid(generics.ListAPIView):
-    permission_classes =[IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     serializer_class = ViewBidSerializer
-    queryset = Bid.objects.all()
-    
-    def get(Self,request,*args,**kwargs):
-        if request.user.type !="FREELANCER" or request.user.Block == True:
-            return Response ({'status': status.HTTP_403_FORBIDDEN,'message':'Your Profile is Blocked or Not a Freelancer Profile','data':{}}, status=status.HTTP_403_FORBIDDEN)
-        freelanceBid=[]
-        freelancelist=Bid.objects.filter(freelancer_id=request.user.id).values("id")
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        freelancelist = Bid.objects.filter(freelancer_id=self.request.user.id).values("id")
+        freelanceBid = []
+
         for i in freelancelist:
-            bidobj=Bid.objects.select_related().get(id=i['id'])
-            print(bidobj,"bid")
-            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_type':bidobj.bid_type,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'Project_rate':bidobj.project.rate,'Project_budget':bidobj.project.fixed_budget,'Project_min_hourly_rate':bidobj.project.min_hourly_rate,'Project_max_hourly_rate':bidobj.project.max_hourly_rate,'Project_experience_level':bidobj.project.experience_level,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at}})
-        return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceBid}, status=status.HTTP_200_OK)
+            bidobj = Bid.objects.select_related().get(id=i['id'])
+            freelanceBid.append({
+                'id': bidobj.id,
+                'bid_amount': bidobj.bid_amount,
+                'description': bidobj.description,
+                'bid_type': bidobj.bid_type,
+                'bid_time': bidobj.bid_time,
+                'freelancer_id': bidobj.freelancer_id,
+                'project_id': bidobj.project_id,
+                "project": {
+                    'title': bidobj.project.title,
+                    'category': bidobj.project.category,
+                    'description': bidobj.project.description,
+                    'skills_required': bidobj.project.skills_required,
+                    'Project_rate': bidobj.project.rate,
+                    'Project_budget': bidobj.project.fixed_budget,
+                    'Project_min_hourly_rate': bidobj.project.min_hourly_rate,
+                    'Project_max_hourly_rate': bidobj.project.max_hourly_rate,
+                    'Project_experience_level': bidobj.project.experience_level,
+                    'deadline': bidobj.project.deadline,
+                    'created_at': bidobj.project.created_at
+                }
+            })
+        return freelanceBid
+
+    def list(self, request, *args, **kwargs):
+        if request.user.type != "FREELANCER" or request.user.Block:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': 'Your Profile is Blocked or Not a Freelancer Profile', 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+
+        # Fetch the list of bids for the current freelancer
+        
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Apply pagination on the queryset
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            return self.get_paginated_response(page)
+
+
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': queryset}, status=status.HTTP_200_OK)
 
 
 class ViewFreelancerSelfProjectBid(generics.ListAPIView):
@@ -581,18 +802,11 @@ class SavedProjectsView(generics.CreateAPIView):
 
 class ViewAllSavedJobs(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    queryset = SavedProject.objects.all()
+    pagination_class = PageNumberPagination
 
-    def get(self, request, *args, **kwargs):
-        try:
-            freelancer = request.user
-        except AttributeError:
-            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'Profile Not Found','data':{}}, status=status.HTTP_404_NOT_FOUND)
-
+    def get_queryset(self):
+        freelancer=self.request.user
         saveddata = SavedProject.objects.filter(freelancer_id=freelancer)
-        
-        if not saveddata.exists():
-            return Response({'status': status.HTTP_404_NOT_FOUND,'message':'No saved jobs found','data':{}}, status=status.HTTP_404_NOT_FOUND)
 
         res = []
         for save_list in saveddata:
@@ -610,8 +824,20 @@ class ViewAllSavedJobs(generics.ListAPIView):
                 'Project_Experience_level': save_list.project.experience_level,
                 'Project_Hirer_Location': save_list.project.project_owner.Address
             })
+        return res
+    
+    def list(self,request,*args,**kwargs):
+        if request.user.type != "FREELANCER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': 'Your Profile is Blocked or Not a Freelancer Profile', 'data': {}}, status=status.HTTP_403_FORBIDDEN)
 
-        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': res}, status=status.HTTP_200_OK)
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Apply pagination on the queryset
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': queryset}, status=status.HTTP_200_OK)
     
 
 class FreelancerEmploymentUpdateView(GenericAPIView,mixins.UpdateModelMixin):
@@ -674,7 +900,7 @@ class SubscriptionView(generics.CreateAPIView):
         serializer = SubscriptionSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({'status': status.HTTP_201_CREATED,'message': ' Thankyou for Subscribe!','data': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({'status': status.HTTP_200_OK,'message': ' Thankyou for Subscribe!','data': serializer.data}, status=status.HTTP_200_OK)
         return Response({'status': status.HTTP_400_BAD_REQUEST,'message': serializer.errors,'data': {}}, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -686,5 +912,118 @@ class UserContactUsView(generics.CreateAPIView):
         serializer = UserContantUsSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({'status':status.HTTP_201_CREATED,'message':'Your data has been Submitted','data':serializer.data},status=status.HTTP_201_CREATED)
+            return Response({'status':status.HTTP_200_OK,'message':'Your data has been Submitted','data':serializer.data},status=status.HTTP_200_OK)
         return Response({'status':status.HTTP_400_BAD_REQUEST,'message':serializer.errors,'data':{}},status=status.HTTP_400_BAD_REQUEST)
+    
+
+class ClientNotificationListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ClientNotificationSerializer
+    queryset = ClientNotification.objects.all()
+
+
+    def get(self,request,*args,**kwargs):
+        if request.user.type!="HIRER" or request.user.Block==True:
+            return Response({'status':status.HTTP_403_FORBIDDEN,'message':"You're not a Hirer profile or your id is block",'data':{}},status=status.HTTP_403_FORBIDDEN)
+        # Assuming the authenticated user is the Hirer
+        notdata = ClientNotification.objects.filter(hirer=self.request.user).order_by('-timestamp')
+        serializer = ClientNotificationSerializer(notdata, many=True)
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': serializer.data}, status=status.HTTP_200_OK)
+    
+
+class ClientNotificationUpdateView(GenericAPIView,mixins.UpdateModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ClientNotificationSerializer
+    queryset = ClientNotification.objects.all()
+
+    def put(self, request, *args, **kwargs):
+        if request.user.type != "HIRER" or request.user.Block == True:
+            return Response({'status':status.HTTP_403_FORBIDDEN, 'message':"You're not a Hirer profile or your id is block", 'data':{}}, status=status.HTTP_403_FORBIDDEN)
+
+        notification_id = self.kwargs.get('pk') 
+        try:
+            notification = ClientNotification.objects.get(pk=notification_id, hirer=self.request.user)
+
+            notification.is_read = True
+            notification.save()
+
+            serializer = ClientNotificationSerializer(notification)
+            return Response({'status': status.HTTP_200_OK, 'message': 'Notification marked as read', 'data': serializer.data}, status=status.HTTP_200_OK)
+
+        except ClientNotification.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Notification not found', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class ClientNotificationDeleteView(GenericAPIView,mixins.DestroyModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ClientNotificationSerializer
+    queryset = ClientNotification.objects.all()
+    lookup_field = 'id' 
+
+    def delete(self, request, *args, **kwargs):
+        if request.user.type != "HIRER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Hirer profile or your id is block", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        
+        notif = self.get_object()
+
+        if notif.hirer != request.user:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You can't delete this notification", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        
+        notif.delete()
+        return Response({'status': status.HTTP_200_OK, 'message': 'Notification deleted successfully', 'data': {}}, status=status.HTTP_200_OK)
+    
+
+class FreelancerNotificationListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FreelancerNotificationSerializer
+    queryset = FreelancerNotification.objects.all()
+
+
+    def get(self,request,*args,**kwargs):
+        if request.user.type!="FREELANCER" or request.user.Block==True:
+            return Response({'status':status.HTTP_403_FORBIDDEN,'message':"You're not a Freelancer profile or your id is block",'data':{}},status=status.HTTP_403_FORBIDDEN)
+        notdata = FreelancerNotification.objects.filter(freelancer=self.request.user).order_by('-timestamp')
+        serializer = FreelancerNotificationSerializer(notdata, many=True)
+        return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': serializer.data}, status=status.HTTP_200_OK)
+    
+
+class FreelancerNotificationUpdateView(GenericAPIView,mixins.UpdateModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FreelancerNotificationSerializer
+    queryset = FreelancerNotification.objects.all()
+
+    def put(self, request, *args, **kwargs):
+        if request.user.type != "FREELANCER" or request.user.Block == True:
+            return Response({'status':status.HTTP_403_FORBIDDEN, 'message':"You're not a Freelancer profile or your id is block", 'data':{}}, status=status.HTTP_403_FORBIDDEN)
+
+        notification_id = self.kwargs.get('pk') 
+        try:
+            notification = FreelancerNotification.objects.get(pk=notification_id, freelancer=self.request.user)
+
+            notification.is_read = True
+            notification.save()
+
+            serializer = FreelancerNotificationSerializer(notification)
+            return Response({'status': status.HTTP_200_OK, 'message': 'Notification marked as read', 'data': serializer.data}, status=status.HTTP_200_OK)
+
+        except FreelancerNotification.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Notification not found', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+
+
+class FreelancerNotificationDeleteView(GenericAPIView,mixins.DestroyModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FreelancerNotificationSerializer
+    queryset = FreelancerNotification.objects.all()
+    lookup_field = 'id' 
+
+    def delete(self, request, *args, **kwargs):
+        if request.user.type != "FREELANCER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Freelancer profile or your id is block", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        
+        notif = self.get_object()
+
+        if notif.freelancer != request.user:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You can't delete this notification", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        
+        notif.delete()
+        return Response({'status': status.HTTP_200_OK, 'message': 'Notification deleted successfully', 'data': {}}, status=status.HTTP_200_OK)

@@ -42,6 +42,7 @@ urlpatterns = [
     path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('account/',include('account.urls')),
     path('freelance/',include('FreelanceTask.urls')),
+    path('chat/',include('chat.urls')),
     path('token/refresh/', jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', jwt_views.TokenVerifyView.as_view(), name='verify_token'),
 ]
