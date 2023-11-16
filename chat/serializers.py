@@ -11,7 +11,13 @@ if Freelancer:
 if Hirer:
     User = Hirer
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'
+
 class ConversationSerializers(serializers.ModelSerializer):
+    online = UserSerializer(many=True) 
     class Meta:
         model = Conversation
         fields = '__all__'
@@ -49,19 +55,19 @@ class ConversationSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ("id", "first_Name", "last_message")
 
-        def get_last_message(self, obj):
-            messages = obj.message.all().order_by("-timestamp")
-            if not messages.exists():
-                return None
-            message = messages[0]
-            print("message :",message)
+    def get_last_message(self, obj):
+        messages = obj.message.all().order_by("-timestamp")
+        if not messages.exists():
+            return None
+        message = messages[0]
+        print("message :",message)
 
-            return MessageSerializer(message).data
-        
-        def get_other_user(self, obj):
-            usernames = obj.name.split("__")
-            context = {}
-            for username in usernames:
-                if username in usernames:
-                    other_user = User.objects.get(first_Name = username)
-                    return UserSerializer(other_user, context=context).data
+        return MessageSerializer(message).data
+    
+    def get_other_user(self, obj):
+        usernames = obj.name.split("__")
+        context = {}
+        for username in usernames:
+            if username in usernames:
+                other_user = User.objects.get(first_Name = username)
+                return UserSerializer(other_user, context=context).data

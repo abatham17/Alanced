@@ -339,12 +339,19 @@ class ViewBidById(generics.ListAPIView):
                 queryset = queryset.filter(
                     Q(bid_amount__icontains=search_query) |
                     Q(description__icontains=search_query) |
-                    Q(bid_type__icontains=search_query) 
+                    Q(bid_type__icontains=search_query) |
+                    Q(freelancer__Address__icontains=search_query) |
+                    Q(freelancer__skills__icontains=search_query) |
+                    Q(freelancer__first_Name__icontains=search_query) |
+                    Q(freelancer__last_Name__icontains=search_query) |
+                    Q(freelancer__category__icontains=search_query)
                 )
 
 
+            # if not queryset.exists():
+            #     return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'No bids found for this project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
             if not queryset.exists():
-                return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'No bids found for this project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'status': status.HTTP_200_OK, 'message': 'No results found', 'data': []}, status=status.HTTP_200_OK)
             my_bids=[]
             for bid in queryset:
                 formatted_date = bid.bid_time.strftime("%Y-%m-%d %I:%M %p")
@@ -354,12 +361,12 @@ class ViewBidById(generics.ListAPIView):
                     'description': bid.description,
                     'bid_type': bid.bid_type,
                     'bid_time': formatted_date,
-                    'freelancer_Name': f"{bid.freelancer.first_Name} {bid.freelancer.last_Name}",
+                    'freelancer_name': f"{bid.freelancer.first_Name} {bid.freelancer.last_Name}",
                     'project_id': bid.project.id,
                     'freelancer_id':bid.freelancer.id,
                     'freelancer_category': bid.freelancer.category,
                     'freelancer_address': bid.freelancer.Address,
-                    'Freelancer_skills': bid.freelancer.skills,
+                    'freelancer_skills': bid.freelancer.skills,
                     'freelancer_profilepic': '/media/' + str(bid.freelancer.images_logo),
                     'freelancer_about': bid.freelancer.about,
                     'freelancer_hourly_rate':bid.freelancer.hourly_rate,
@@ -705,7 +712,7 @@ class DeleteFreelancerProjectView(GenericAPIView,mixins.DestroyModelMixin):
 class ViewFreelancerSelfBid(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ViewBidSerializer
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPageNumberPagination
 
     def get_queryset(self):
         freelancelist = Bid.objects.filter(freelancer_id=self.request.user.id).values("id")

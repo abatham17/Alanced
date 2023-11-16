@@ -84,16 +84,16 @@ WSGI_APPLICATION = 'freelancer.wsgi.application'
 ASGI_APPLICATION = 'freelancer.asgi.application' # for message api
 
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://redis-19425.c302.asia-northeast1-1.gce.cloud.redislabs.com:19425',
-        'OPTIONS': {
-            'PASSWORD': 'Sachin@90099',
-            'DB': 0,  # Use database 0 by default.
-        }
-    }
-}
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#         'LOCATION': 'redis://redis-19425.c302.asia-northeast1-1.gce.cloud.redislabs.com:19425',
+#         'OPTIONS': {
+#             'PASSWORD': 'Sachin@90099',
+#             'DB': 0,  # Use database 0 by default.
+#         }
+#     }
+# }
 
 
 # Database
