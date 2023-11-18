@@ -25,6 +25,7 @@ class Project(models.Model):
     max_hourly_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00,null=True)
     fixed_budget = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,null=True)
     experience_level = models.CharField(max_length=50,choices=Experience_level.choices,default="")
+    is_hired = models.BooleanField(default=False)
 
     class Meta:
         db_table="Project"
@@ -150,3 +151,22 @@ class FreelancerNotification(models.Model):
 
     class Meta:
         db_table="FreelancerNotification" 
+
+
+
+class Hire(models.Model):
+    class Hiring_Budget_Type(models.TextChoices):
+        Hourly = "Hourly", "hourly"
+        Fixed = "Fixed", "fixed"
+    project = models.ForeignKey(Project, on_delete=models.DO_NOTHING, related_name='hired_projects')
+    hired_freelancer = models.ForeignKey(Freelancer, on_delete=models.DO_NOTHING, related_name='hired_freelancers')
+    freelancer_accepted = models.BooleanField(default=False)
+    freelancer_rejected = models.BooleanField(default=False)
+    project_title = models.CharField(max_length=255,default="")  
+    hiring_budget = models.DecimalField(max_digits=10, decimal_places=2,default=0.00,null=True)  
+    message = models.TextField(default="")  
+    hiring_budget_type = models.CharField(choices=Hiring_Budget_Type.choices,default="", max_length=15)
+    hired_at = models.DateTimeField(auto_now_add=True) 
+
+    class Meta:
+        db_table="Hire" 

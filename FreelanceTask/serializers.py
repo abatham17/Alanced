@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import Project,Bid,Membership,Review,FreelancerProject,FreelancerEmployment, Subscription, UserContactUs,ClientNotification,FreelancerNotification
+from . models import Project,Bid,Membership,Review,FreelancerProject,FreelancerEmployment, Subscription, UserContactUs,ClientNotification,FreelancerNotification,Hire
 from account.models import Freelancer
 
 
@@ -176,3 +176,9 @@ class FreelancerNotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = FreelancerNotification
         fields = '__all__'  
+
+
+class HireSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hire
+        fields = '__all__'
