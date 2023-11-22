@@ -42,8 +42,11 @@ urlpatterns =[
     path('hire/<str:pk>', views.HireFreelancerView.as_view(), name='hire-freelancer'),
     path('projects/accept/<int:pk>', views.FreelancerAcceptProjectView.as_view(), name='accept-project'),
     path('projects/reject/<int:pk>', views.FreelancerRejectProjectView.as_view(), name='reject-project'),
-    path('View-all/hired-freelancers',views.ViewAllHiredFreelancers.as_view()),
     path('View-all/hire-request',views.ViewAllHiringRequests.as_view()),
     path('view-all/hirer-self/Project',views.ViewAllHirerSelfProject.as_view()),
+    path('View-all/invited-freelancers',views.ViewAllInvitedFreelancers.as_view()),
+    path('View-all/pending-hire-request',views.ViewAllPendingHiringRequests.as_view()),
+    path('View-all/freelancer-contracts',views.ViewAllFreelancerContracts.as_view()),
+    path('View-all/hirer-contracts',views.ViewAllHirerContracts.as_view()),
 ]
    

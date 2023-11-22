@@ -137,6 +137,7 @@ class ClientNotification(models.Model):
     message = models.TextField(default='')
     is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=50)
 
     class Meta:
         db_table="ClientNotification"
@@ -148,6 +149,7 @@ class FreelancerNotification(models.Model):
     message = models.TextField(default='')
     is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=50)
 
     class Meta:
         db_table="FreelancerNotification" 

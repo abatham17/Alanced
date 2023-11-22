@@ -52,14 +52,14 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.conversation_name,
             self.channel_name
         )
-        messages = self.conversation.messages.all().order_by("-timestamp")[0:10]
+        messages = self.conversation.messages.all().order_by("-timestamp")[0:5]
         message_count = self.conversation.messages.all().count()
         print("messages !!!!!!!!!! ",message_count)
         self.send_json(
             {
                 "type": "last_50_messages",
                 "messages": MessageSerializer(messages, many=True).data,
-                "has_more": message_count > 5,
+                "has_more": message_count > 1,
             }
         )
         # self.send_json(

@@ -14,7 +14,7 @@ from django.db.models import Q
 from rest_framework import filters, viewsets
 from rest_framework.pagination import PageNumberPagination
 from smtputils import Util
-
+from rest_framework.parsers import MultiPartParser,FormParser
 # Create your views here.
 
 class AddProjectView(generics.CreateAPIView):
@@ -211,7 +211,7 @@ class ViewAllHirerSelfProject(generics.ListAPIView):
     permission_classes =[IsAuthenticated]
     serializer_class = ViewAllProjectSerializer
     
-    def get(self, request, args, *kwargs):
+    def get(self, request, *args, **kwargs):
         if request.user.type != "HIRER" or request.user.Block == True:
             return Response({'status': status.HTTP_403_FORBIDDEN, 'message':'Your Profile is Blocked or Not a Hirer Profile', 'data':{}}, status=status.HTTP_403_FORBIDDEN)
         
@@ -343,7 +343,8 @@ class AddBidView(generics.CreateAPIView):
         ClientNotification.objects.create(
             hirer=pro_bid.project_owner,
             title="New Bid Received",
-            message=f"{request.user.first_Name} {request.user.last_Name} has placed a bid on your project {pro_bid.title}."
+            message=f"{request.user.first_Name} {request.user.last_Name} has placed a bid on your project {pro_bid.title}.",
+            type='bid'
         )
 
         return Response({'status': status.HTTP_200_OK, 'message': 'Add Bid Amount Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
@@ -585,7 +586,9 @@ class AddReviewsView(generics.CreateAPIView):
             FreelancerNotification.objects.create(
             freelancer=freelancerObj, 
             title="New Review Received", 
-            message=f"{request.user.first_Name} {request.user.last_Name} has been added a review for you on project {project.title}.")
+            message=f"{request.user.first_Name} {request.user.last_Name} has been added a review for you on project {project.title}.",
+            type='review'
+            )
             return Response({'status': status.HTTP_200_OK, 'message': 'Review Added Successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
         return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Invalid data', 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -658,6 +661,7 @@ class DeleteReviews(GenericAPIView,mixins.DestroyModelMixin):
     
 
 class FreelancerAddProjectView(generics.CreateAPIView):
+    parser_classes = [MultiPartParser, FormParser]
     permission_classes=[IsAuthenticated]
     serializer_class=FreelancerAddProjectSerializer
     def post(self, request,format=None):
@@ -1116,16 +1120,21 @@ class HireFreelancerView(generics.CreateAPIView):
         if project.project_owner != request.user:
             return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You are not the owner of this project", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
 
-        if project.is_hired:
-            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'You have already sent a Hiring Request to freelancer for this project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        # if project.is_hired:
+        #     return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'You have already sent a Hiring Request to freelancer for this project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_hiring_request = Hire.objects.filter(project=project, hired_freelancer=freelancer).first()
+
+        if existing_hiring_request:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'You have already sent a Hiring Request to this freelancer for this project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
 
         hiring = Hire(project=project, hired_freelancer=freelancer,project_title=project_title,
             hiring_budget=hiring_budget,hiring_budget_type=hiring_budget_type,
             message=message)
         hiring.save()
 
-        project.is_hired = True
-        project.save()
+        # project.is_hired = True
+        # project.save()
 
         response_data = {
             'hire_id':hiring.id,
@@ -1137,49 +1146,18 @@ class HireFreelancerView(generics.CreateAPIView):
             'hiring_budget': hiring_budget,
             'hiring_budget_type': hiring_budget_type,
             'message': message,
+            'hired_at': hiring.hired_at
         }
         FreelancerNotification.objects.create(
             freelancer=freelancer, 
             title="New Hiring Request Received", 
-            message=f"{request.user.first_Name} {request.user.last_Name} has been Sent you a hiring request For project {project.title}."
+            message=f"{request.user.first_Name} {request.user.last_Name} has been Sent you a hiring request For project {project.title}.",
+            type='AllHirereq'
         )
 
-        return Response({'status': status.HTTP_200_OK, 'message': 'Freelancer Hired successfully', 'data': response_data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_200_OK, 'message': 'Hiring Request Sent successfully', 'data': response_data}, status=status.HTTP_200_OK)
     
 
-
-class ViewAllHiredFreelancers(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
-    queryset = Hire.objects.all()  
-    serializer_class = HireSerializer  
-
-    def get(self, request, *args, **kwargs):
-        if request.user.type != "HIRER" or request.user.Block == True:
-            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Hirer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
-        
-        queryset = self.get_queryset()
-
-        if not queryset:
-            return Response({'status': status.HTTP_204_NO_CONTENT, 'message': 'No hired freelancers found', 'data': []}, status=status.HTTP_204_NO_CONTENT)
-
-        data = []
-        for hire in queryset:
-            response_data = {
-                'hire_id': hire.id,
-                'project_id': hire.project.id,
-                'freelancer_id': hire.hired_freelancer.id,
-                'project_title': hire.project_title,
-                'hiring_budget': hire.hiring_budget,
-                'hiring_budget_type': hire.hiring_budget_type,
-                'message': hire.message,
-                'freelancer_name': f"{hire.hired_freelancer.first_Name} {hire.hired_freelancer.last_Name}",
-                'hire_by': f"{hire.project.project_owner.first_Name} {hire.project.project_owner.last_Name}",
-                'freelancer_accepted': hire.freelancer_accepted,
-                'freelancer_rejected': hire.freelancer_rejected
-            }
-            data.append(response_data)
-
-        return Response({'status': status.HTTP_200_OK, 'message': 'Hired freelancers retrieved successfully', 'data': data}, status=status.HTTP_200_OK)
 
 class FreelancerAcceptProjectView(GenericAPIView, mixins.UpdateModelMixin):
     permission_classes = [IsAuthenticated]
@@ -1191,26 +1169,34 @@ class FreelancerAcceptProjectView(GenericAPIView, mixins.UpdateModelMixin):
             return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Freelancer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
 
         hiring = self.get_object()
+        project = hiring.project
 
         if hiring.hired_freelancer != request.user:
             return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You are not authorized to accept this project.", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
 
         if hiring.freelancer_accepted:
             return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'You have already accepted this project.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if project.is_hired:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Another freelancer is already hired for this project. You cannot accept the hiring request.'}, status=status.HTTP_400_BAD_REQUEST)
 
         hiring.freelancer_accepted = True
         hiring.freelancer_rejected = False
         hiring.save()
+
+        project.is_hired = True
+        project.save()
 
         hirer_email = hiring.project.project_owner
         print(hirer_email)
         ClientNotification.objects.create(
             hirer=hirer_email,
             title="Hiring Invitation Accepted",
-            message=f"{request.user.first_Name} {request.user.last_Name} has accepted your hiring invitation for project {hiring.project_title}."
+            message=f"{request.user.first_Name} {request.user.last_Name} has accepted your hiring invitation for project {hiring.project_title}.",
+            type='AllInvite'
         )
 
-        return Response({'status': status.HTTP_200_OK, 'message': 'Project accepted successfully'}, status=status.HTTP_200_OK)   
+        return Response({'status': status.HTTP_200_OK, 'message': 'Project accepted successfully'}, status=status.HTTP_200_OK)     
      
 
 class FreelancerRejectProjectView(GenericAPIView, mixins.UpdateModelMixin):
@@ -1243,7 +1229,8 @@ class FreelancerRejectProjectView(GenericAPIView, mixins.UpdateModelMixin):
         ClientNotification.objects.create(
             hirer=hirer_email,
             title="Hiring Invitation Rejected",
-            message=f"{request.user.first_Name} {request.user.last_Name} has rejected your hiring invitation for project {hiring.project_title}."
+            message=f"{request.user.first_Name} {request.user.last_Name} has rejected your hiring invitation for project {hiring.project_title}.",
+            type='AllInvite'
         )
 
         return Response({'status': status.HTTP_200_OK, 'message': 'You Have Rejected the hiring Request'}, status=status.HTTP_200_OK)
@@ -1292,3 +1279,217 @@ class ViewAllHiringRequests(generics.ListAPIView):
 
 
         return Response({'status': status.HTTP_200_OK, 'message': ' All Invitations Retrieved Successfully', 'data': response_data}, status=status.HTTP_200_OK)
+    
+
+class ViewAllInvitedFreelancers(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = Hire.objects.all()  
+    serializer_class = HireSerializer  
+    pagination_class= PageNumberPagination
+
+    def get(self, request, *args, **kwargs):
+        if request.user.type != "HIRER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Hirer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        
+        queryset = self.get_queryset()
+
+        if not queryset:
+            return Response({'status': status.HTTP_204_NO_CONTENT, 'message': 'No hired freelancers found', 'data': []}, status=status.HTTP_204_NO_CONTENT)
+
+        data = []
+        for hire in queryset:
+            response_data = {
+                'hire_id': hire.id,
+                'project_id': hire.project.id,
+                'freelancer_id': hire.hired_freelancer.id,
+                'project_title': hire.project_title,
+                'project_description':hire.project.description,
+                'project_category':hire.project.category,
+                'hiring_budget': hire.hiring_budget,
+                'hiring_budget_type': hire.hiring_budget_type,
+                'message': hire.message,
+                'freelancer_name': f"{hire.hired_freelancer.first_Name} {hire.hired_freelancer.last_Name}",
+                'freelancer_category':hire.hired_freelancer.category,
+                'freelancer_description':hire.hired_freelancer.about,
+                'freelancer_skills':hire.hired_freelancer.skills,
+                'freelancer_hourly_rate':hire.hired_freelancer.hourly_rate,
+                'freelancer_experience_level':hire.hired_freelancer.experience_level,
+                'freelancer_language':hire.hired_freelancer.Language,
+                'hire_by': f"{hire.project.project_owner.first_Name} {hire.project.project_owner.last_Name}",
+                'freelancer_accepted': hire.freelancer_accepted,
+                'freelancer_rejected': hire.freelancer_rejected,
+                'hired_at':hire.hired_at
+            }
+            data.append(response_data)
+        page = self.paginate_queryset(data)
+
+        if page is not None:
+            return self.get_paginated_response(page)
+
+
+        return Response({'status': status.HTTP_200_OK, 'message': 'Hired freelancers retrieved successfully', 'data': data}, status=status.HTTP_200_OK)
+    
+
+class ViewAllPendingHiringRequests(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPageNumberPagination  
+
+    def get(self, request, *args, **kwargs):
+        if request.user.type != "FREELANCER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Freelancer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        freelancer = self.request.user
+
+        # Retrieve hiring requests for the authenticated freelancer
+        hiring_requests = Hire.objects.filter(hired_freelancer=freelancer, freelancer_accepted=False, freelancer_rejected=False)
+
+        # Customize the response data for each hiring request
+        response_data = []
+        for hiring_request in hiring_requests:
+            response_data.append({
+                'hire_id': hiring_request.id,
+                'project_id': hiring_request.project.id,
+                'freelancer_id': hiring_request.hired_freelancer.id,
+                'hired_by': f"{hiring_request.project.project_owner.first_Name} {hiring_request.project.project_owner.last_Name}",
+                'hired_freelancer_name': f"{hiring_request.hired_freelancer.first_Name} {hiring_request.hired_freelancer.last_Name}",
+                'project_title': hiring_request.project_title,
+                'project_category':hiring_request.project.category,
+                'project_description':hiring_request.project.description,
+                'project_exp_level':hiring_request.project.experience_level,
+                'project_skills':hiring_request.project.skills_required,
+                'project_deadline':hiring_request.project.deadline,
+                'hiring_budget': hiring_request.hiring_budget,
+                'hiring_budget_type': hiring_request.hiring_budget_type,
+                'message': hiring_request.message,
+                'freelancer_accepted':hiring_request.freelancer_accepted,
+                'freelancer_rejected':hiring_request.freelancer_rejected,
+                'hirer_location':hiring_request.project.project_owner.Address,
+                'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
+                'Received_time': hiring_request.hired_at,
+            })
+
+        # Paginate the response data
+        page = self.paginate_queryset(response_data)
+
+        if page is not None:
+            return self.get_paginated_response(page)
+
+
+
+        return Response({'status': status.HTTP_200_OK, 'message': ' All Pending Invitations Retrieved Successfully', 'data': response_data}, status=status.HTTP_200_OK)
+    
+
+class ViewAllFreelancerContracts(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = PageNumberPagination
+
+    def get(self, request, *args, **kwargs):
+        if request.user.type != "FREELANCER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Freelancer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        freelancer = self.request.user
+
+        
+        # Retrieve hiring requests for the authenticated freelancer
+        contracts = Hire.objects.filter(hired_freelancer=freelancer,freelancer_accepted=True)
+
+        search_query = request.query_params.get('search_query')
+        if search_query:
+            contracts = contracts.filter(
+                Q(project_title__icontains=search_query) |
+                Q(hiring_budget__icontains=search_query) |
+                Q(hiring_budget_type__icontains=search_query) 
+            )
+
+        # Customize the response data for each hiring request
+        response_data = []
+        for hiring_request in contracts:
+            response_data.append({
+                'hire_id': hiring_request.id,
+                'project_id': hiring_request.project.id,
+                'freelancer_id': hiring_request.hired_freelancer.id,
+                'hired_by': f"{hiring_request.project.project_owner.first_Name} {hiring_request.project.project_owner.last_Name}",
+                'hired_freelancer_name': f"{hiring_request.hired_freelancer.first_Name} {hiring_request.hired_freelancer.last_Name}",
+                'project_title': hiring_request.project_title,
+                'project_category':hiring_request.project.category,
+                'project_deadline':hiring_request.project.deadline,
+                'project_description':hiring_request.project.description,
+                'project_exp_level':hiring_request.project.experience_level,
+                'project_skills':hiring_request.project.skills_required,
+                'project_deadline':hiring_request.project.deadline,
+                'hiring_budget': hiring_request.hiring_budget,
+                'hiring_budget_type': hiring_request.hiring_budget_type,
+                'message': hiring_request.message,
+                'freelancer_accepted':hiring_request.freelancer_accepted,
+                'freelancer_rejected':hiring_request.freelancer_rejected,
+                'hirer_location':hiring_request.project.project_owner.Address,
+                'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
+                'Received_time': hiring_request.hired_at,
+            })
+
+        # Paginate the response data
+        page = self.paginate_queryset(response_data)
+
+        if page is not None:
+            return self.get_paginated_response(page)
+
+
+
+        return Response({'status': status.HTTP_200_OK, 'message': ' All Freelancer Contracts Retrieved Successfully', 'data': response_data}, status=status.HTTP_200_OK)
+    
+
+class ViewAllHirerContracts(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = PageNumberPagination
+
+    def get(self, request, *args, **kwargs):
+        if request.user.type != "HIRER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Hirer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+        hirer = self.request.user
+
+
+        # Retrieve hiring requests for the authenticated freelancer
+        contracts = Hire.objects.filter(project__project_owner=hirer,freelancer_accepted=True)
+
+        search_query = request.query_params.get('search_query')
+        if search_query:
+            contracts = contracts.filter(
+                Q(project_title__icontains=search_query) |
+                Q(hiring_budget__icontains=search_query) |
+                Q(hiring_budget_type__icontains=search_query) |
+                Q(hired_freelancer__first_Name__icontains=search_query) |
+                Q(hired_freelancer__last_Name__icontains=search_query)
+            )
+
+        # Customize the response data for each hiring request
+        response_data = []
+        for hiring_request in contracts:
+            response_data.append({
+                'hire_id': hiring_request.id,
+                'project_id': hiring_request.project.id,
+                'freelancer_id': hiring_request.hired_freelancer.id,
+                'hired_by': f"{hiring_request.project.project_owner.first_Name} {hiring_request.project.project_owner.last_Name}",
+                'hired_freelancer_name': f"{hiring_request.hired_freelancer.first_Name} {hiring_request.hired_freelancer.last_Name}",
+                'project_title': hiring_request.project_title,
+                'project_category':hiring_request.project.category,
+                'project_description':hiring_request.project.description,
+                'project_exp_level':hiring_request.project.experience_level,
+                'project_skills':hiring_request.project.skills_required,
+                'project_deadline':hiring_request.project.deadline,
+                'hiring_budget': hiring_request.hiring_budget,
+                'hiring_budget_type': hiring_request.hiring_budget_type,
+                'message': hiring_request.message,
+                'freelancer_accepted':hiring_request.freelancer_accepted,
+                'freelancer_rejected':hiring_request.freelancer_rejected,
+                'hirer_location':hiring_request.project.project_owner.Address,
+                'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
+                'Sent_time': hiring_request.hired_at,
+            })
+
+        # Paginate the response data
+        page = self.paginate_queryset(response_data)
+
+        if page is not None:
+            return self.get_paginated_response(page)
+
+
+
+        return Response({'status': status.HTTP_200_OK, 'message': ' All Hirer Contracts Retrieved Successfully', 'data': response_data}, status=status.HTTP_200_OK)

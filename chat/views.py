@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework.response import responses,Response
 import uuid
+from .paginaters import MessagePagination
 
 # Create your views here.
 
@@ -30,7 +31,7 @@ class ConversationsViewSet(RetrieveModelMixin, GenericAPIView):
                     messages = Message.objects.filter(conversation = i.id).order_by("-timestamp")[0:1]
                     for j in messages:
                         from_user = {}
-                        to_user = {}
+                        to_user ={}
                         for key, value in MessageSerializer(j).data['from_user'].items():
                             if key == "password" or key == "date_of_creation" or key == "is_superuser":
                                 continue
@@ -66,13 +67,14 @@ class ConversationViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
 
 class MessageViewSet(ListModelMixin, GenericViewSet):
     serializer_class = MessageSerializer
-    queryset = Message.objects.none()
+    queryset = Message.objects.all()
+    pagination_class = MessagePagination
 
-    def get_querset(self):
+    def get_queryset(self):
         conversation_name = self.request.GET.get("conversation")
         queryset = (
             Message.objects.filter(
-                conversation__name__contains = self.request.user.first_Name,
+                conversation__name__contains = conversation_name
             ).filter(conversation__name = conversation_name).order_by("-timestamp")
         )
         return queryset
