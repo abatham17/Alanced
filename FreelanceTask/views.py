@@ -1238,7 +1238,7 @@ class FreelancerRejectProjectView(GenericAPIView, mixins.UpdateModelMixin):
 
 class ViewAllHiringRequests(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    pagination_class = CustomPageNumberPagination  
+    pagination_class = PageNumberPagination 
 
     def get(self, request, *args, **kwargs):
         if request.user.type != "FREELANCER" or request.user.Block == True:
@@ -1267,6 +1267,8 @@ class ViewAllHiringRequests(generics.ListAPIView):
                 'hiring_budget_type': hiring_request.hiring_budget_type,
                 'message': hiring_request.message,
                 'hirer_location':hiring_request.project.project_owner.Address,
+                'freelancer_accepted':hiring_request.freelancer_accepted,
+                'freelancer_rejected':hiring_request.freelancer_rejected,
                 'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
                 'Received_time': hiring_request.hired_at
             })
@@ -1283,17 +1285,18 @@ class ViewAllHiringRequests(generics.ListAPIView):
 
 class ViewAllInvitedFreelancers(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    queryset = Hire.objects.all()  
-    serializer_class = HireSerializer  
-    pagination_class= PageNumberPagination
+    serializer_class = HireSerializer
+    pagination_class = PageNumberPagination
 
     def get(self, request, *args, **kwargs):
-        if request.user.type != "HIRER" or request.user.Block == True:
-            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Hirer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
-        
-        queryset = self.get_queryset()
+        user = request.user
 
-        if not queryset:
+        if user.type != "HIRER" or user.Block:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Hirer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = Hire.objects.filter(project__project_owner=user)
+
+        if not queryset.exists():
             return Response({'status': status.HTTP_204_NO_CONTENT, 'message': 'No hired freelancers found', 'data': []}, status=status.HTTP_204_NO_CONTENT)
 
         data = []
@@ -1303,31 +1306,32 @@ class ViewAllInvitedFreelancers(generics.ListAPIView):
                 'project_id': hire.project.id,
                 'freelancer_id': hire.hired_freelancer.id,
                 'project_title': hire.project_title,
-                'project_description':hire.project.description,
-                'project_category':hire.project.category,
+                'project_description': hire.project.description,
+                'project_category': hire.project.category,
                 'hiring_budget': hire.hiring_budget,
                 'hiring_budget_type': hire.hiring_budget_type,
                 'message': hire.message,
                 'freelancer_name': f"{hire.hired_freelancer.first_Name} {hire.hired_freelancer.last_Name}",
-                'freelancer_category':hire.hired_freelancer.category,
-                'freelancer_description':hire.hired_freelancer.about,
-                'freelancer_skills':hire.hired_freelancer.skills,
-                'freelancer_hourly_rate':hire.hired_freelancer.hourly_rate,
-                'freelancer_experience_level':hire.hired_freelancer.experience_level,
-                'freelancer_language':hire.hired_freelancer.Language,
+                'freelancer_category': hire.hired_freelancer.category,
+                'freelancer_description': hire.hired_freelancer.about,
+                'freelancer_skills': hire.hired_freelancer.skills,
+                'freelancer_hourly_rate': hire.hired_freelancer.hourly_rate,
+                'freelancer_experience_level': hire.hired_freelancer.experience_level,
+                'freelancer_language': hire.hired_freelancer.Language,
                 'hire_by': f"{hire.project.project_owner.first_Name} {hire.project.project_owner.last_Name}",
                 'freelancer_accepted': hire.freelancer_accepted,
                 'freelancer_rejected': hire.freelancer_rejected,
-                'hired_at':hire.hired_at
+                'hired_at': hire.hired_at
             }
             data.append(response_data)
+
         page = self.paginate_queryset(data)
 
         if page is not None:
             return self.get_paginated_response(page)
 
 
-        return Response({'status': status.HTTP_200_OK, 'message': 'Hired freelancers retrieved successfully', 'data': data}, status=status.HTTP_200_OK)
+        return Response({'status': status.HTTP_200_OK, 'message': 'All Invited freelancers retrieved successfully', 'data': data}, status=status.HTTP_200_OK)
     
 
 class ViewAllPendingHiringRequests(generics.ListAPIView):
