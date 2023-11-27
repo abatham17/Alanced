@@ -121,6 +121,7 @@ class ViewAllProject(generics.ListAPIView):
                 'project_owner_location': proObj.project_owner.Address,
                 'project_owner_contact': proObj.project_owner.contact,
                 'experience_level': proObj.experience_level,
+                'is_hired':proObj.is_hired,
             })
 
         page = self.paginate_queryset(project_list)
@@ -196,7 +197,8 @@ class ViewHirerSelfProject(generics.ListAPIView):
                 'project_owner_id': project.project_owner.id,
                 'project_owner_address': project.project_owner.Address,
                 'project_owner_created': project.project_owner.date_of_creation,
-                'experience_level': project.experience_level
+                'experience_level': project.experience_level,
+                'is_hired':project.is_hired
             })
 
         page = self.paginate_queryset(hirerPro)
@@ -233,7 +235,8 @@ class ViewAllHirerSelfProject(generics.ListAPIView):
                 'Project_created_at': project.created_at,
                 'project_owner_id': project.project_owner.id,
                 'project_owner_address': project.project_owner.Address,
-                'project_owner_created': project.project_owner.date_of_creation
+                'project_owner_created': project.project_owner.date_of_creation,
+                'is_hired':project.is_hired
             })
         
         return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': hirerPro}, status=status.HTTP_200_OK)
@@ -419,6 +422,7 @@ class ViewBidById(generics.ListAPIView):
                         'min_hourly_rate': bid.project.min_hourly_rate,
                         'max_hourly_rate': bid.project.max_hourly_rate,
                         'created_at': bid.project.created_at,
+                         'is_hired':bid.project.is_hired
                     }
                 })
 
@@ -1112,6 +1116,10 @@ class HireFreelancerView(generics.CreateAPIView):
         except Freelancer.DoesNotExist:
             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Freelancer not found', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
         
+
+        if project.is_hired:
+            return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'you Have Already hired A Freelancer For this Project', 'data': {}}, status=status.HTTP_400_BAD_REQUEST)
+        
         project_title = request.data.get('project_title')
         hiring_budget = request.data.get('hiring_budget')
         message = request.data.get('message')
@@ -1270,7 +1278,8 @@ class ViewAllHiringRequests(generics.ListAPIView):
                 'freelancer_accepted':hiring_request.freelancer_accepted,
                 'freelancer_rejected':hiring_request.freelancer_rejected,
                 'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
-                'Received_time': hiring_request.hired_at
+                'Received_time': hiring_request.hired_at,
+                'is_hired':hiring_request.project.is_hired
             })
 
         # Paginate the response data
@@ -1321,7 +1330,8 @@ class ViewAllInvitedFreelancers(generics.ListAPIView):
                 'hire_by': f"{hire.project.project_owner.first_Name} {hire.project.project_owner.last_Name}",
                 'freelancer_accepted': hire.freelancer_accepted,
                 'freelancer_rejected': hire.freelancer_rejected,
-                'hired_at': hire.hired_at
+                'hired_at': hire.hired_at,
+                'is_hired':hire.project.is_hired
             }
             data.append(response_data)
 
@@ -1369,6 +1379,7 @@ class ViewAllPendingHiringRequests(generics.ListAPIView):
                 'hirer_location':hiring_request.project.project_owner.Address,
                 'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
                 'Received_time': hiring_request.hired_at,
+                'is_hired':hiring_request.project.is_hired
             })
 
         # Paginate the response data
@@ -1427,6 +1438,7 @@ class ViewAllFreelancerContracts(generics.ListAPIView):
                 'hirer_location':hiring_request.project.project_owner.Address,
                 'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
                 'Received_time': hiring_request.hired_at,
+                'is_hired':hiring_request.project.is_hired
             })
 
         # Paginate the response data
@@ -1486,6 +1498,7 @@ class ViewAllHirerContracts(generics.ListAPIView):
                 'hirer_location':hiring_request.project.project_owner.Address,
                 'hirer_creation_date':hiring_request.project.project_owner.date_of_creation,
                 'Sent_time': hiring_request.hired_at,
+                'is_hired':hiring_request.project.is_hired
             })
 
         # Paginate the response data
@@ -1497,3 +1510,24 @@ class ViewAllHirerContracts(generics.ListAPIView):
 
 
         return Response({'status': status.HTTP_200_OK, 'message': ' All Hirer Contracts Retrieved Successfully', 'data': response_data}, status=status.HTTP_200_OK)
+    
+
+class ViewInvitedFreelancersForProject(generics.ListAPIView):
+    serializer_class = HireSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        if request.user.type != "HIRER" or request.user.Block == True:
+            return Response({'status': status.HTTP_403_FORBIDDEN, 'message': "You're not a Hirer profile or your id is blocked", 'data': {}}, status=status.HTTP_403_FORBIDDEN)
+
+        user = request.user
+        project_id = kwargs.get('project_id')
+
+        try:
+            project = Project.objects.get(id=project_id, project_owner=user)
+        except Project.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Project not found or you are not the owner of the project', 'data': {}}, status=status.HTTP_404_NOT_FOUND)
+
+        invited_freelancers_count = Hire.objects.filter(project__project_owner=user, project__id=project_id).count()
+
+        return Response({'status': status.HTTP_200_OK, 'message': f'Invited freelancers count for project {project_id} retrieved successfully', 'data': invited_freelancers_count}, status=status.HTTP_200_OK)

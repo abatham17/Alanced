@@ -48,5 +48,6 @@ urlpatterns =[
     path('View-all/pending-hire-request',views.ViewAllPendingHiringRequests.as_view()),
     path('View-all/freelancer-contracts',views.ViewAllFreelancerContracts.as_view()),
     path('View-all/hirer-contracts',views.ViewAllHirerContracts.as_view()),
+    path('View/project-invitations-count/<int:project_id>',views.ViewInvitedFreelancersForProject.as_view()),
 ]
    
