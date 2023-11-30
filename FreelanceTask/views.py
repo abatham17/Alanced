@@ -122,6 +122,8 @@ class ViewAllProject(generics.ListAPIView):
                 'project_owner_contact': proObj.project_owner.contact,
                 'experience_level': proObj.experience_level,
                 'is_hired':proObj.is_hired,
+                'project_owner_date_of_creation':proObj.project_owner.date_of_creation,
+                'project_owner_id':proObj.project_owner_id
             })
 
         page = self.paginate_queryset(project_list)
@@ -819,7 +821,7 @@ class ViewFreelancerAllSelfBid(generics.ListAPIView):
         for i in freelancelist:
             bidobj=Bid.objects.select_related().get(id=i['id'])
             print(bidobj,"bid")
-            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_type':bidobj.bid_type,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'Project_rate':bidobj.project.rate,'Project_budget':bidobj.project.fixed_budget,'Project_min_hourly_rate':bidobj.project.min_hourly_rate,'Project_max_hourly_rate':bidobj.project.max_hourly_rate,'Project_experience_level':bidobj.project.experience_level,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at}})
+            freelanceBid.append({'id':bidobj.id,'bid_amount':bidobj.bid_amount,'description':bidobj.description,'bid_type':bidobj.bid_type,'bid_time':bidobj.bid_time,'freelancer_id':bidobj.freelancer_id,'project_id':bidobj.project_id,"project":{'title':bidobj.project.title,'category':bidobj.project.category,'description':bidobj.project.description,'skills_required':bidobj.project.skills_required,'Project_rate':bidobj.project.rate,'Project_budget':bidobj.project.fixed_budget,'Project_min_hourly_rate':bidobj.project.min_hourly_rate,'Project_max_hourly_rate':bidobj.project.max_hourly_rate,'Project_experience_level':bidobj.project.experience_level,'deadline':bidobj.project.deadline,'created_at':bidobj.project.created_at,'project_owner_first_Name':bidobj.project.project_owner.first_Name,'project_owner_address':bidobj.project.project_owner.Address,'project_owner_data_of_creation':bidobj.project.project_owner.date_of_creation}})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceBid}, status=status.HTTP_200_OK)
 
 
@@ -889,7 +891,8 @@ class ViewAllSavedJobs(generics.ListAPIView):
                 'Project_skills':save_list.project.skills_required,
                 'Project_Created':save_list.project.created_at,
                 'Project_Experience_level': save_list.project.experience_level,
-                'Project_Hirer_Location': save_list.project.project_owner.Address
+                'Project_Hirer_Location': save_list.project.project_owner.Address,
+                'is_hired':save_list.project.is_hired
             })
         return res
     
