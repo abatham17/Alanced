@@ -46,9 +46,13 @@ class ConversationsViewSet(RetrieveModelMixin, GenericAPIView):
                             print("-------------- >",to_user)
                         AllMessages.append({"id":j.id, "conversation":j.conversation.id, "from_user":from_user, "to_user":to_user, "content":j.content, "timestamp": j.timestamp, "read":j.read, "name": i.name})
                         # print("AllMessages : ", AllMessages)
-                        print("messages ====== : ",j.id,"------",j.conversation,j.from_user,j.to_user,j.content,j.timestamp,j.read)
+                        # print("messages ====== : ",j.id,"------",j.conversation,j.from_user,j.to_user,j.content,j.timestamp,j.read)
                     AllNames.append({"id":i.id,"name":i.name,"online":ConversationSerializers(i).data['online']})
-        return Response({'status': status.HTTP_200_OK, 'data': AllMessages})
+            # def getdata(item):
+            #     return item['timestamp']
+            # print("-----------------------------",sorted(AllMessages, key=getdata))
+        return Response({'status': status.HTTP_200_OK, 'data': sorted(AllMessages, key=lambda x: x['timestamp'], reverse=True)})
+        
 
 class ConversationViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
     serializer_class = ConversationSerializer
