@@ -116,14 +116,14 @@ class ViewAllProject(generics.ListAPIView):
                 'deadline': proObj.deadline,
                 'skills_required': proObj.skills_required,
                 'category': proObj.category,
-                'project_owner_name': proObj.project_owner.first_Name,
+                'project_owner_name': proObj.project_owner.first_Name+" "+proObj.project_owner.last_Name,
                 'project_creation_date': proObj.created_at,
                 'project_owner_location': proObj.project_owner.Address,
                 'project_owner_contact': proObj.project_owner.contact,
                 'experience_level': proObj.experience_level,
                 'is_hired':proObj.is_hired,
                 'project_owner_date_of_creation':proObj.project_owner.date_of_creation,
-                'project_owner_id':proObj.project_owner_id
+                'project_owner':proObj.project_owner_id
             })
 
         page = self.paginate_queryset(project_list)
@@ -200,7 +200,8 @@ class ViewHirerSelfProject(generics.ListAPIView):
                 'project_owner_address': project.project_owner.Address,
                 'project_owner_created': project.project_owner.date_of_creation,
                 'experience_level': project.experience_level,
-                'is_hired':project.is_hired
+                'is_hired':project.is_hired,
+                'project_owner_name':project.project_owner.first_Name+" "+project.project_owner.last_Name
             })
 
         page = self.paginate_queryset(hirerPro)
@@ -238,7 +239,8 @@ class ViewAllHirerSelfProject(generics.ListAPIView):
                 'project_owner_id': project.project_owner.id,
                 'project_owner_address': project.project_owner.Address,
                 'project_owner_created': project.project_owner.date_of_creation,
-                'is_hired':project.is_hired
+                'is_hired':project.is_hired,
+                'project_owner_name':project.project_owner.first_Name+" "+project.project_owner.last_Name
             })
         
         return Response({'status': status.HTTP_200_OK, 'message': 'Ok', 'data': hirerPro}, status=status.HTTP_200_OK)
@@ -783,7 +785,10 @@ class ViewFreelancerSelfBid(generics.ListAPIView):
                     'Project_max_hourly_rate': bidobj.project.max_hourly_rate,
                     'Project_experience_level': bidobj.project.experience_level,
                     'deadline': bidobj.project.deadline,
-                    'created_at': bidobj.project.created_at
+                    'created_at': bidobj.project.created_at,
+                    'project_owner_Name':bidobj.project.project_owner.first_Name,
+                    'project_owner_location':bidobj.project.project_owner.Address,
+                    'project_owner_date_of_creation':bidobj.project.project_owner.date_of_creation
                 }
             })
         return freelanceBid
@@ -839,7 +844,7 @@ class ViewFreelancerSelfProjectBid(generics.ListAPIView):
         for i in freelanceProjectlist:
             probidobj=Bid.objects.select_related().get(id=i['id'])
             print(probidobj,"bid")
-            freelanceProjectBid.append({'id':probidobj.id,'bid_amount':probidobj.bid_amount,'description':probidobj.description,'bid_type':probidobj.bid_type,'bid_time':probidobj.bid_time,'freelancer_id':probidobj.freelancer_id,'project_id':probidobj.project_id,"project":{'title':probidobj.project.title,'category':probidobj.project.category,'description':probidobj.project.description,'skills_required':probidobj.project.skills_required,'deadline':probidobj.project.deadline,'fixed_budget':probidobj.project.fixed_budget,'rate':probidobj.project.rate,'min_hourly_rate':probidobj.project.min_hourly_rate,'max_hourly_rate':probidobj.project.max_hourly_rate,'experience_level':probidobj.project.experience_level,'created_at':probidobj.project.created_at}})
+            freelanceProjectBid.append({'id':probidobj.id,'bid_amount':probidobj.bid_amount,'description':probidobj.description,'bid_type':probidobj.bid_type,'bid_time':probidobj.bid_time,'freelancer_id':probidobj.freelancer_id,'project_id':probidobj.project_id,"project":{'title':probidobj.project.title,'category':probidobj.project.category,'description':probidobj.project.description,'skills_required':probidobj.project.skills_required,'deadline':probidobj.project.deadline,'fixed_budget':probidobj.project.fixed_budget,'rate':probidobj.project.rate,'min_hourly_rate':probidobj.project.min_hourly_rate,'max_hourly_rate':probidobj.project.max_hourly_rate,'experience_level':probidobj.project.experience_level,'created_at':probidobj.project.created_at,'project_owner_Name':probidobj.project.project_owner.first_Name,'project_owner_date_of_creation':probidobj.project.project_owner.date_of_creation,'project_owner_location':probidobj.project.project_owner.Address}})
         return Response({'status': status.HTTP_200_OK,'message':'Ok','data':freelanceProjectBid}, status=status.HTTP_200_OK)  
 
 
@@ -1232,8 +1237,8 @@ class FreelancerRejectProjectView(GenericAPIView, mixins.UpdateModelMixin):
         hiring.freelancer_accepted = False
         hiring.save()
 
-        project.is_hired = False
-        project.save()
+        # project.is_hired = False
+        # project.save()
 
         hirer_email = hiring.project.project_owner
         print(hirer_email)
