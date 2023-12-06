@@ -333,7 +333,29 @@ class UserPasswordResetView(generics.CreateAPIView):
     return Response({'status':status.HTTP_200_OK,'message':"Password Reset Successfully"},status=status.HTTP_200_OK)
 
 #googl login and registration
-class googleLoginView(GenericAPIView):
+# class googleLoginView(GenericAPIView):
+#     serializer_class = googleLoginSerializer
+
+#     def post(self, request):
+#         serializer = self.serializer_class(data=request.data)
+
+#         if 'email' in request.data and 'type' in request.data:
+#             email = request.data['email']
+#             user_type = request.data['type']  
+#             user, created = UserAccount.objects.get_or_create(email=email)
+
+         
+#             if created:
+#                 user.type = user_type 
+#                 user.save()  
+#                 serializer = googleLoginSerializer(user)
+#                 return Response(serializer.data, status=201)
+#             return Response({'status':status.HTTP_200_OK,'message':"Email already exists"},status=status.HTTP_200_OK)
+#         return Response({'status':status.HTTP_400_BAD_REQUEST,'message':"Email or type not provided"},status=status.HTTP_400_BAD_REQUEST) 
+
+##New Google Login APIS
+
+class googleSignUpView(GenericAPIView):
     serializer_class = googleLoginSerializer
 
     def post(self, request):
@@ -351,7 +373,35 @@ class googleLoginView(GenericAPIView):
                 serializer = googleLoginSerializer(user)
                 return Response(serializer.data, status=201)
             return Response({'status':status.HTTP_200_OK,'message':"Email already exists"},status=status.HTTP_200_OK)
-        return Response({'status':status.HTTP_400_BAD_REQUEST,'message':"Email or type not provided"},status=status.HTTP_400_BAD_REQUEST) 
+        return Response({'status':status.HTTP_400_BAD_REQUEST,'message':"Email or type not provided"},status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+class googleLoginView(GenericAPIView):
+    serializer_class = googleLoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if 'email' in request.data and 'type' in request.data:
+            email = request.data['email']
+            user_type = request.data['type']
+
+            try:
+                user = UserAccount.objects.get(email=email)
+            except UserAccount.DoesNotExist:
+                return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            token = get_tokens_for_user(user)
+
+            serializer_data = {
+                'id': user.id,
+                'email': user.email,
+            }
+
+            return Response({'status': status.HTTP_201_CREATED, 'message': 'Login Success', 'data': {'type': user.type, 'token': token, 'login_data': serializer_data}}, status=status.HTTP_201_CREATED)
+
+        return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': "Email or type not provided"}, status=status.HTTP_400_BAD_REQUEST)
      
 
 class CheckEmailExistsView(GenericAPIView):

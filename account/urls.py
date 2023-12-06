@@ -20,4 +20,5 @@ urlpatterns =[
     path('password/reset/<uid>/<token>',views.UserPasswordResetView.as_view()),
     path('google-login/', views.googleLoginView.as_view()),
     path('check-email/', views.CheckEmailExistsView.as_view()),
+    path('google-sign-up/', views.googleSignUpView.as_view()),
 ]
