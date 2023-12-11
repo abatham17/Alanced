@@ -369,6 +369,11 @@ class googleSignUpView(GenericAPIView):
          
             if created:
                 user.type = user_type 
+                user.is_verified=True
+                if user_type=='HIRER':
+                    user.is_hirer=True
+                else:
+                    user.is_freelancer=True    
                 user.save()  
                 serializer = googleLoginSerializer(user)
                 return Response(serializer.data, status=201)
@@ -393,13 +398,16 @@ class googleLoginView(GenericAPIView):
                 return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
             token = get_tokens_for_user(user)
+            if user.type=="HIRER":
+                login_data = {
+                    "id":user.id,"Company_Name":user.Company_Name,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"about":user.about,"DOB":user.DOB,"Company_Establish":user.Company_Establish,"gender":user.gender,"map":user.map
+                }
+            else:
+                login_data={
+                    "id":user.id,"first_Name":user.first_Name,"last_Name":user.last_Name,"email":user.email,"contact":user.contact,"Address":user.Address,"images_logo":'/media/'+str(user.images_logo),"social_media":user.social_media,"skills":user.skills,"about":user.about,"DOB":user.DOB,"gender":user.gender,"map":user.map,"experience":user.experience,"qualification":user.qualification,"category":user.category,"Language":user.Language,"hourly_rate":user.hourly_rate,"experience_level":user.experience_level
+                }    
 
-            serializer_data = {
-                'id': user.id,
-                'email': user.email,
-            }
-
-            return Response({'status': status.HTTP_201_CREATED, 'message': 'Login Success', 'data': {'type': user.type, 'token': token, 'login_data': serializer_data}}, status=status.HTTP_201_CREATED)
+            return Response({'status': status.HTTP_201_CREATED, 'message': 'Login Success', 'data': {'type': user.type, 'token': token, 'login_data': login_data}}, status=status.HTTP_201_CREATED)
 
         return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': "Email or type not provided"}, status=status.HTTP_400_BAD_REQUEST)
      
