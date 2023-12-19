@@ -1372,6 +1372,7 @@ class ViewAllPendingHiringRequests(generics.ListAPIView):
                 'project_id': hiring_request.project.id,
                 'freelancer_id': hiring_request.hired_freelancer.id,
                 'hired_by': f"{hiring_request.project.project_owner.first_Name} {hiring_request.project.project_owner.last_Name}",
+                'hired_by_id':hiring_request.project.project_owner.id,
                 'hired_freelancer_name': f"{hiring_request.hired_freelancer.first_Name} {hiring_request.hired_freelancer.last_Name}",
                 'project_title': hiring_request.project_title,
                 'project_category':hiring_request.project.category,
