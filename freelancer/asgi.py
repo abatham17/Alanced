@@ -16,12 +16,17 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/asgi/
 # application = get_asgi_application()
 
 
+import django
+django.setup()
 import os
 
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from freelancer import routing
 from chat.middleware import WebSocketAuthMiddleware
+from django.conf import settings
+if not settings.configured:
+        settings.configure()
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'freelancer.settings')
 

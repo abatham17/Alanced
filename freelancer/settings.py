@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-^45w(6pb&qz$vecik$9j=mrmn6hfd0k12%)56h56+-_s_i=*^0
 DEBUG = True
 
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*","51.21.1.122","51.21.1.122:8000","51.21.1.122:8001","51.21.1.122:80"]
 
 
 # Application definition
@@ -47,9 +47,9 @@ INSTALLED_APPS = [
     'FreelanceTask',
     'django_cleanup.apps.CleanupConfig',
     'django_filters',
-    # 'channels',
+    'channels',
     'chat',
-    'daphne',
+    #'daphne',
 
 ]
 
@@ -83,7 +83,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'freelancer.wsgi.application'
-# ASGI_APPLICATION = 'freelancer.asgi.application' # for message api
+ASGI_APPLICATION = 'freelancer.asgi.application' # for message api
 
 
 # CACHES = {
@@ -251,11 +251,11 @@ EMAIL_HOST_USER ='aparnac.wiz91@gmail.com'
 EMAIL_HOST_PASSWORD = 'jctlnfvpzjxlbwrd'
 
 
-# CHANNEL_LAYERS = {
-#     "default": {
-#         "BACKEND": "channels_redis.core.RedisChannelLayer",   # for message api
-#         "CONFIG": {
-#             "hosts": [("localhost", 6379)],
-#         },
-#     },
-# }
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",   # for message api
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],
+        },
+    },
+}
