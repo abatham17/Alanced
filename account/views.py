@@ -81,7 +81,7 @@ class HirerRegistrationView(generics.CreateAPIView):
                  'body': '''
         <h1>Welcome to Alanced</h1>
         <p>Click the button below to verify your account:</p>
-        <a href="http://51.21.1.122:8000/account/verify/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
+        <a href="https://www.alanced.com/account/verify/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
     ''',
                  'to_email': request.data['email']
             }
@@ -110,7 +110,7 @@ class FreelancerRegistrationView(generics.CreateAPIView):
                  'body': '''
         <h1>Welcome to Alanced</h1>
         <p>Click the button below to verify your account:</p>
-        <a href="http://51.21.1.122:8000/account/verify/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
+        <a href="https://www.alanced.com/account/verify/'''+uid+'''/'''+token+'''" type="button" style="border: none;color: white;padding: 10px 10px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>Verify Account</b></a>
     ''',
                  'to_email': request.data['email']
             }
@@ -314,7 +314,7 @@ def AccountVerification(request,uid,token):
     if default_token_generator.check_token(user, token):
         user.is_verified = True
         user.save()
-        return redirect('https://alanced.netlify.app/login') 
+        return redirect('https://www.alanced.com/login') 
     
 
 class SendPasswordResetEmailView(generics.CreateAPIView):

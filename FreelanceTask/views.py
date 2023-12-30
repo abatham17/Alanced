@@ -333,7 +333,7 @@ class AddBidView(generics.CreateAPIView):
                     <h1 style="color: green;letter-spacing: 2px;font-size:22px;">ALANCED</h1>
                     <h3>Congrats! You have Received A New Proposal!!</h3>
                     <p style="font-size:15px">Hi Client, On Your Project You Have Received A New Proposal.</p>
-                    <a href="http://localhost:3000/" type="button" style="border: none;color: white;padding: 10px 20px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>View Proposal</b></a>
+                    <a href="https://www.alanced.com/" type="button" style="border: none;color: white;padding: 10px 20px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>View Proposal</b></a>
                     <h3>Thank You, <br>Team Alanced.</h3>
                 </div>
             </div>
@@ -580,7 +580,7 @@ class AddReviewsView(generics.CreateAPIView):
                         <h1 style="color: green;letter-spacing: 2px;font-size:22px;">ALANCED</h1>
                         <h3>Congrats! You have Received A New Review!!</h3>
                         <p style="font-size:15px">Hi Freelancer, On Your Project You Have Received A New Review.</p>
-                        <a href="http://localhost:3000/" type="button" style="border: none;color: white;padding: 10px 20px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>View Review</b></a>
+                        <a href="https://www.alanced.com/" type="button" style="border: none;color: white;padding: 10px 20px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;margin: 4px 2px;cursor:pointer;background-color: #4CAF50;border-radius:5px;"><b>View Review</b></a>
                         <h3>Thank You, <br>Team Alanced.</h3>
                     </div>
                 </div>
